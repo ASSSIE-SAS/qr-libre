@@ -1,0 +1,8 @@
+/backend/target/
+*.apk
+*.aab
+.DS_Store
+.idea/
+*.iml
+gradle/
+local.properties
