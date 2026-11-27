@@ -31,6 +31,24 @@ nunca significa que el banco confirmó el pago. Si ninguna regla coincide, la
 herramienta imprime `bank: unknown` y `confidence: low`, sin monto, y termina
 con código 0. Un archivo ilegible termina con código 1.
 
+### Bancolombia
+
+La regla `bancolombia` reconoce los avisos de pago que llegan desde
+`ayn.notificacionesbancolombia.com`, exige la frase `Recibiste un pago` y lee
+el monto con formato anglosajón (`35,000,000.00`). Esos correos llegan solo en
+HTML: el lector usa `text/plain` si existe y, si no, convierte el HTML a texto,
+sin etiquetas y con entidades como `&aacute;` o `&nbsp;` resueltas.
+
+El fixture es sintético:
+
+```sh
+cargo run --bin parse-eml -- fixtures/bancolombia/payment.eml
+```
+
+Los dos formatos de monto se eligen con `AmountStyle`: `Colombian`
+(`35.000,00`) y `Anglo` (`35,000.00`). Cada regla usa el de su banco; un
+formato ambiguo devuelve `None` en vez de adivinar.
+
 Pruebas:
 
 ```sh
@@ -46,7 +64,8 @@ cargo test
    ficticios. Nunca hagas commit de un correo de una persona real.
 3. Crea la regla en `src/email/rules/<banco>.rs`. La regla debe:
    - reconocer el banco por el remitente (`from`), no solo por el asunto;
-   - extraer el monto con `crate::email::amount::parse_amount`;
+   - extraer el monto con `parse_amount` o `parse_amount_with` y el
+     `AmountStyle` que use el banco;
    - devolver `None` si falta un campo obligatorio, sin inventar valores;
    - usar `Confidence::High` solo si reconoce el formato completo y
      `Confidence::Low` para coincidencias heurísticas.

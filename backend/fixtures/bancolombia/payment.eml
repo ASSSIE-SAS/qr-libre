@@ -1,0 +1,17 @@
+From: Bancolombia <notificaciones@ayn.notificacionesbancolombia.com>
+To: cliente@example.com
+Subject: Alertas y Notificaciones
+Date: Thu, 26 Nov 2026 17:23:00 -0500
+Message-ID: <sintetico-1250000@notificacionesbancolombia.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="bancolombia-sintetico"
+
+--bancolombia-sintetico
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<html><body>
+<p>Bancolombia: Recibiste un pago Persona de Prueba de Entidad Ficticia &amp; Compa&ntilde;&iacute;a por $1,250,000.00 en tu cuenta de Ahorros el 26/11/2026 a las 17:23. Si tienes dudas, llamanos al 601 000 0000. A tu lado&nbsp;siempre.</p>
+<p>Este mensaje es autom=C3=A1tico.</p>
+</body></html>
+--bancolombia-sintetico--

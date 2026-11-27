@@ -7,6 +7,7 @@ use qr_libre_api::email::{
 };
 
 const FIXTURE: &str = include_str!("../fixtures/bank-example/payment.eml");
+const BANCOLOMBIA_FIXTURE: &str = include_str!("../fixtures/bancolombia/payment.eml");
 
 fn observation_json(observation: &PaymentObservation) -> serde_json::Value {
     serde_json::to_value(observation).expect("serializable observation")
@@ -166,6 +167,61 @@ fn raw_email_without_rule_fields_does_not_panic() {
         subject: String::new(),
         body: String::new(),
     };
+    assert!(observe(&email).is_none());
+}
+
+#[test]
+fn bancolombia_fixture_yields_high_confidence_observation() {
+    let email = parse_eml(BANCOLOMBIA_FIXTURE).expect("bancolombia fixture parses");
+    assert!(email.body.contains("Recibiste un pago"), "body: {}", email.body);
+    assert!(!email.body.contains('<'), "HTML was not stripped: {}", email.body);
+
+    let observation = observe(&email).expect("bancolombia rule matches");
+    assert_eq!(observation.bank, "Bancolombia");
+    assert_eq!(observation.amount_minor, 125_000_000);
+    assert_eq!(observation.currency, "COP");
+    assert_eq!(observation.confidence, Confidence::High);
+    assert_eq!(observation.reference, None);
+
+    let occurred_at = observation
+        .occurred_at
+        .as_deref()
+        .expect("occurred_at is present");
+    assert_eq!(occurred_at, "2026-11-26T17:23:00-05:00");
+    assert!(occurred_at.ends_with("-05:00"));
+
+    let json = observation_json(&observation);
+    assert_eq!(json["bank"], "Bancolombia");
+    assert_eq!(json["amount_minor"], 125_000_000);
+    assert_eq!(json["occurred_at"], "2026-11-26T17:23:00-05:00");
+}
+
+#[test]
+fn bancolombia_notice_without_amount_returns_none() {
+    let raw = concat!(
+        "From: Bancolombia <notificaciones@ayn.notificacionesbancolombia.com>\r\n",
+        "Subject: Alertas y Notificaciones\r\n",
+        "MIME-Version: 1.0\r\n",
+        "Content-Type: text/html; charset=\"UTF-8\"\r\n",
+        "\r\n",
+        "<p>Bancolombia: Recibiste un pago de Entidad Ficticia en tu cuenta ",
+        "de Ahorros el 26/11/2026 a las 17:23.</p>\r\n"
+    );
+    let email = parse_eml(raw).expect("email parses");
+    assert!(observe(&email).is_none());
+}
+
+#[test]
+fn other_domain_mentioning_the_payment_phrase_returns_none() {
+    let raw = concat!(
+        "From: Otro Banco <avisos@otrobanco.test>\r\n",
+        "Subject: Aviso\r\n",
+        "MIME-Version: 1.0\r\n",
+        "Content-Type: text/plain; charset=\"UTF-8\"\r\n",
+        "\r\n",
+        "Recibiste un pago por $1,250,000.00 en tu cuenta.\r\n"
+    );
+    let email = parse_eml(raw).expect("email parses");
     assert!(observe(&email).is_none());
 }
 
