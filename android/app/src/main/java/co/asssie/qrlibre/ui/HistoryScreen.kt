@@ -48,6 +48,9 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun HistoryScreen(
     notificationAccess: Boolean,
+    ttsReady: Boolean,
+    ttsMessage: String?,
+    onSpeak: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -66,6 +69,7 @@ internal fun HistoryScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { PermissionCard(notificationAccess, onOpenNotificationSettings) }
+        item { VoiceCard(ttsReady, ttsMessage, onSpeak) }
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -177,6 +181,40 @@ private fun PermissionCard(granted: Boolean, onOpenSettings: () -> Unit) {
                 Button(onClick = onOpenSettings) {
                     Text(stringResource(R.string.permission_open_settings))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VoiceCard(ready: Boolean, message: String?, onSpeak: () -> Unit) {
+    Card {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.voice_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(
+                    if (ready) R.string.voice_ready else R.string.voice_explanation,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (message != null) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+            OutlinedButton(onClick = onSpeak) {
+                Text(stringResource(R.string.voice_action))
             }
         }
     }

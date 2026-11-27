@@ -6,6 +6,14 @@
       notifications on the device only.
     -->
 
+    <!-- Needed on Android 11+ to list apps that have a launcher screen. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

@@ -26,6 +26,9 @@ import co.asssie.qrlibre.R
 @Composable
 fun QrLibreApp(
     notificationAccess: Boolean,
+    ttsReady: Boolean,
+    ttsMessage: String?,
+    onSpeak: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(0) }
@@ -72,25 +75,14 @@ fun QrLibreApp(
             when (tab) {
                 0 -> HistoryScreen(
                     notificationAccess = notificationAccess,
+                    ttsReady = ttsReady,
+                    ttsMessage = ttsMessage,
+                    onSpeak = onSpeak,
                     onOpenNotificationSettings = onOpenNotificationSettings,
                 )
-                else -> ScaffoldMessage(stringResource(tabLabels[tab]))
+                1 -> AppsScreen()
+                else -> PrivacyScreen()
             }
         }
-    }
-}
-
-@Composable
-private fun ScaffoldMessage(title: String) {
-    Column(modifier = Modifier.padding(20.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-        )
-        Text(
-            text = "Pantalla en construcción.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
