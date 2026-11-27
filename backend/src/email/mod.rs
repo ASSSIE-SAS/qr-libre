@@ -10,6 +10,9 @@
 
 use mail_parser::MessageParser;
 
+pub mod amount;
+pub use amount::parse_amount;
+
 /// The parts of an email that a bank rule is allowed to inspect.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RawEmail {
