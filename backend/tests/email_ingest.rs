@@ -8,6 +8,7 @@ use qr_libre_api::email::{
 
 const FIXTURE: &str = include_str!("../fixtures/bank-example/payment.eml");
 const BANCOLOMBIA_FIXTURE: &str = include_str!("../fixtures/bancolombia/payment.eml");
+const NEQUI_FIXTURE: &str = include_str!("../fixtures/nequi/bre-b-payment.eml");
 
 fn observation_json(observation: &PaymentObservation) -> serde_json::Value {
     serde_json::to_value(observation).expect("serializable observation")
@@ -167,6 +168,59 @@ fn raw_email_without_rule_fields_does_not_panic() {
         subject: String::new(),
         body: String::new(),
     };
+    assert!(observe(&email).is_none());
+}
+
+#[test]
+fn nequi_forwarded_fixture_yields_high_confidence_observation() {
+    let email = parse_eml(NEQUI_FIXTURE).expect("nequi fixture parses");
+    assert!(email.from.contains("example.com"));
+    assert!(
+        email.body.contains("Recibiste plata por Bre-B"),
+        "body: {}",
+        email.body
+    );
+
+    let observation = observe(&email).expect("nequi rule matches the forwarded copy");
+    assert_eq!(observation.bank, "Nequi");
+    assert_eq!(observation.amount_minor, 250_000_000);
+    assert_eq!(observation.currency, "COP");
+    assert_eq!(observation.confidence, Confidence::High);
+    assert_eq!(observation.reference, None);
+
+    let occurred_at = observation
+        .occurred_at
+        .as_deref()
+        .expect("occurred_at is present");
+    assert_eq!(occurred_at, "2026-11-27T11:15:00-05:00");
+    assert!(occurred_at.ends_with("-05:00"));
+}
+
+#[test]
+fn nequi_body_phrase_without_nequi_returns_none() {
+    let raw = concat!(
+        "From: Otro Banco <avisos@otrobanco.test>\r\n",
+        "Subject: Aviso\r\n",
+        "MIME-Version: 1.0\r\n",
+        "Content-Type: text/plain; charset=\"UTF-8\"\r\n",
+        "\r\n",
+        "Recibiste plata por Bre-B por 2.500.000 el 27 de noviembre de 2026.\r\n"
+    );
+    let email = parse_eml(raw).expect("email parses");
+    assert!(observe(&email).is_none());
+}
+
+#[test]
+fn nequi_sender_without_payment_sentence_returns_none() {
+    let raw = concat!(
+        "From: Nequi <notificaciones@nequi.com.co>\r\n",
+        "Subject: Hola\r\n",
+        "MIME-Version: 1.0\r\n",
+        "Content-Type: text/plain; charset=\"UTF-8\"\r\n",
+        "\r\n",
+        "Hola, revisa tu app y tus movimientos.\r\n"
+    );
+    let email = parse_eml(raw).expect("email parses");
     assert!(observe(&email).is_none());
 }
 

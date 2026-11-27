@@ -5,6 +5,7 @@
 
 mod bancolombia;
 mod example_bank;
+mod nequi;
 
 use super::BankRule;
 
@@ -12,6 +13,7 @@ use super::BankRule;
 pub fn registry() -> Vec<Box<dyn BankRule>> {
     vec![
         Box::new(bancolombia::Bancolombia),
+        Box::new(nequi::Nequi),
         Box::new(example_bank::ExampleBank),
     ]
 }

@@ -1,0 +1,22 @@
+From: Persona de Prueba <persona@example.com>
+To: destino@example.com
+Subject: Fw: Recibiste plata por Bre-B
+Date: Fri, 27 Nov 2026 11:15:00 -0500
+Message-ID: <sintetico-nequi-2500000@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="nequi-sintetico"
+
+--nequi-sintetico
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+[Nequi] =C2=A1Recibiste plata por Bre-B! =C2=A1Hola, Cliente de Prueba! Recibiste 2.500.000 de Remitente Ficticio el 27 de noviembre de 2026 a las 11:15 a.m, desde el banco Banco Ficticio. Revisa el detalle en los movimientos de tu app o descarga el comprobante.
+
+--nequi-sintetico
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<html><body>
+<p>[Nequi] &iexcl;Recibiste plata por Bre-B! &iexcl;Hola, Cliente de Prueba! Recibiste 2.500.000 de Remitente Ficticio el 27 de noviembre de 2026 a las 11:15 a.m, desde el banco Banco Ficticio. Revisa el detalle en los movimientos de tu app o descarga el comprobante.</p>
+</body></html>
+--nequi-sintetico--
