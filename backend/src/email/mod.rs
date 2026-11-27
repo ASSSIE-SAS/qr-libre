@@ -11,7 +11,10 @@
 use mail_parser::MessageParser;
 
 pub mod amount;
+pub mod rules;
+
 pub use amount::parse_amount;
+pub use rules::registry;
 
 /// The parts of an email that a bank rule is allowed to inspect.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,4 +132,15 @@ fn plain_text_body(message: &mail_parser::Message<'_>) -> String {
     }
 
     text
+}
+
+/// Try every registered rule in order and return the first observation.
+///
+/// Returns `None` when no rule claims the email. No generic guess is made:
+/// a missing rule is a missing observation, not a zero amount.
+pub fn observe(email: &RawEmail) -> Option<PaymentObservation> {
+    registry()
+        .iter()
+        .filter(|rule| rule.matches(email))
+        .find_map(|rule| rule.parse(email))
 }

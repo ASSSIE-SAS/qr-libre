@@ -1,0 +1,18 @@
+From: Notificaciones Banco Ejemplo <avisos@bancoejemplo.test>
+To: cliente@example.com
+Subject: Aviso de pago recibido en tu cuenta Banco
+ Ejemplo
+Date: Thu, 26 Nov 2026 10:15:00 -0500
+Message-ID: <aviso-990001@bancoejemplo.test>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hola, cliente:
+
+Recibimos un pago en tu cuenta Banco Ejemplo por un total de $ 35.000,00.
+El pago ya est=C3=A1 registrado y la informaci=C3=B3n del movimiento
+est=C3=A1 disponible en tu extracto.
+
+Referencia: 990001
+Este es un mensaje autom=C3=A1tico, no respondas a este correo.

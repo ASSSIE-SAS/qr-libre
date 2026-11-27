@@ -1,4 +1,5 @@
 /backend/target/
+backend/fixtures/private/
 *.apk
 *.aab
 .DS_Store
