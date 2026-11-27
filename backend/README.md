@@ -45,9 +45,35 @@ El fixture es sintético:
 cargo run --bin parse-eml -- fixtures/bancolombia/payment.eml
 ```
 
-Los dos formatos de monto se eligen con `AmountStyle`: `Colombian`
-(`35.000,00`) y `Anglo` (`35,000.00`). Cada regla usa el de su banco; un
-formato ambiguo devuelve `None` en vez de adivinar.
+### Nequi
+
+La regla `nequi` acepta dos señales: un remitente que contenga `nequi.com.co`,
+o un cuerpo reenviado que contenga `Recibiste plata por Bre-B` y `Nequi`. La
+segunda existe porque las copias manuales (`Fw:`) pierden el remitente
+original; el reenvío automático del producto sí lo conserva. Exige la frase
+completa `Recibiste <monto> de <remitente> el <día> de <mes> de <año> a las
+<hora>`, convierte el reloj de 12 horas con `a.m`/`p.m` a 24 horas y usa
+UTC-05:00. No guarda el nombre del pagador.
+
+Fixture sintético:
+
+```sh
+cargo run --bin parse-eml -- fixtures/nequi/bre-b-payment.eml
+```
+
+### Formatos de monto y fecha
+
+Hay tres convenciones de monto en los avisos:
+
+- colombiana con decimales: `35.000,00` (`AmountStyle::Colombian`);
+- anglosajona con decimales: `35,000.00` (`AmountStyle::Anglo`);
+- colombiana sin símbolo y sin decimales: `2.500.000`
+  (`AmountStyle::Colombian`, porque el estilo solo describe los separadores).
+
+Cada regla usa el estilo de su banco; un formato ambiguo devuelve `None` en vez
+de adivinar. Las fechas también varían: Bancolombia usa `DD/MM/YYYY HH:MM` y
+Nequi usa mes en español con reloj de 12 horas. Ambas reglas convierten a ISO
+8601 con `-05:00`.
 
 Pruebas:
 
