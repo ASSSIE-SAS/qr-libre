@@ -50,7 +50,17 @@ fn first_amount(body: &str) -> Option<i64> {
         let Some(dollar) = line.find('$') else {
             continue;
         };
-        if let Some(amount) = parse_amount(&line[dollar..]) {
+        let rest = &line[dollar + 1..];
+        let Some(start) = rest.find(|c: char| c.is_ascii_digit()) else {
+            continue;
+        };
+        let token: String = rest[start..]
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '.' || *c == ',')
+            .collect();
+        // Drop sentence punctuation such as the final period.
+        let token = token.trim_end_matches(['.', ',']);
+        if let Some(amount) = parse_amount(token) {
             return Some(amount);
         }
     }

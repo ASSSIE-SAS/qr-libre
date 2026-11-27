@@ -13,7 +13,7 @@ use mail_parser::MessageParser;
 pub mod amount;
 pub mod rules;
 
-pub use amount::parse_amount;
+pub use amount::{parse_amount, parse_amount_with, AmountStyle};
 pub use rules::registry;
 
 /// The parts of an email that a bank rule is allowed to inspect.
