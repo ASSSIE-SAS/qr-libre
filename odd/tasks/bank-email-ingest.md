@@ -84,3 +84,15 @@ cargo run --bin parse-eml -- fixtures/bank-example/payment.eml --json
 Cuando exista un correo real del banco del comerciante, se agrega una regla con
 su fixture anonimizado y una prueba que lo cubra. Solo entonces se evalúa el
 subdominio y el webhook.
+
+## Hallazgos del correo real (Nequi / Bre-B)
+
+- Llega como reenvío manual: el `From` exterior es del reenvío, no de Nequi. La regla acepta dominio de Nequi **o** cuerpo con `Recibiste plata por Bre-B` + `Nequi`.
+- Tercer estilo de número: sin símbolo, sin decimales, punto como separador de miles (`#.###.###`).
+- Fecha en palabras y reloj de 12 horas: `el 27 de noviembre de 2026 a las 11:15 a.m`.
+- No hay referencia ni comprobante. El nombre del pagador es dato personal: no se almacena.
+- Verificado contra el correo real: banco, monto y `occurred_at` con `-05:00` correctos.
+
+## Riesgo abierto (importante)
+
+Si la regla acepta cuerpo además de remitente, cualquiera que conozca la dirección de ingesta puede enviar un correo con ese texto y fabricar un aviso de pago. Antes de operar con comerciantes reales hay que: dirección secreta por comercio, verificación de DKIM/SPF del remitente original, y no anunciar nunca la observación como pago confirmado.
