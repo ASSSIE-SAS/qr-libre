@@ -109,28 +109,49 @@ pub fn parse_eml(raw: &str) -> Result<RawEmail, String> {
 }
 
 /// Collect `text/plain` parts, falling back to HTML converted to text.
+///
+/// `text/plain` wins whenever at least one such part exists, even if it is
+/// empty. HTML is used only when the message has no plain text body at all;
+/// `mail-parser`'s `html_to_text` strips tags, decodes named and numeric
+/// entities (for example `&aacute;` → `á`, `&nbsp;` → space, `&amp;` → `&`)
+/// and collapses whitespace.
 fn plain_text_body(message: &mail_parser::Message<'_>) -> String {
+    // `text_body` may contain an HTML part as a stand-in when there is no
+    // plain version, so check the content type before treating a part as
+    // plain text.
+    let plain_parts: Vec<String> = message
+        .text_body()
+        .filter(|part| !part.is_content_type("text", "html"))
+        .filter_map(|part| part.text().map(|text| text.into_owned()))
+        .collect();
+    if !plain_parts.is_empty() {
+        return join_parts(plain_parts.into_iter());
+    }
+
+    let html_parts: Vec<String> = message
+        .html_body()
+        .filter_map(|part| part.text())
+        .map(|html| html_to_plain_text(&html))
+        .collect();
+    join_parts(html_parts.into_iter())
+}
+
+/// Strip HTML and normalize whitespace, including the non-breaking space
+/// that `&nbsp;` decodes to.
+fn html_to_plain_text(html: &str) -> String {
+    let text = mail_parser::html_to_text(html);
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Join decoded body parts, keeping paragraphs separated by a newline.
+fn join_parts(parts: impl Iterator<Item = String>) -> String {
     let mut text = String::new();
-    for part in message.text_body() {
-        if let Some(part_text) = part.text() {
-            if !text.is_empty() && !text.ends_with('\n') {
-                text.push('\n');
-            }
-            text.push_str(&part_text);
+    for part_text in parts {
+        if !text.is_empty() && !text.ends_with('\n') {
+            text.push('\n');
         }
+        text.push_str(&part_text);
     }
-
-    if text.trim().is_empty() {
-        for part in message.html_body() {
-            if let Some(html) = part.text() {
-                if !text.is_empty() && !text.ends_with('\n') {
-                    text.push('\n');
-                }
-                text.push_str(&mail_parser::html_to_text(&html));
-            }
-        }
-    }
-
     text
 }
 
@@ -143,4 +164,84 @@ pub fn observe(email: &RawEmail) -> Option<PaymentObservation> {
         .iter()
         .filter(|rule| rule.matches(email))
         .find_map(|rule| rule.parse(email))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_eml;
+
+    #[test]
+    fn html_only_email_is_converted_to_text() {
+        let raw = concat!(
+            "From: Banco <avisos@bancoejemplo.test>\r\n",
+            "Subject: Aviso\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: text/html; charset=\"UTF-8\"\r\n",
+            "Content-Transfer-Encoding: quoted-printable\r\n",
+            "\r\n",
+            "<html><body><p>Recibiste un pago por $1,250,000.00</p></body></html>\r\n"
+        );
+        let email = parse_eml(raw).expect("html-only email parses");
+        assert!(
+            email.body.contains("Recibiste un pago por $1,250,000.00"),
+            "body was: {}",
+            email.body
+        );
+        assert!(!email.body.contains('<'), "body still has tags: {}", email.body);
+    }
+
+    #[test]
+    fn html_named_entities_are_decoded() {
+        let raw = concat!(
+            "From: Banco <avisos@bancoejemplo.test>\r\n",
+            "Subject: Aviso\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: text/html; charset=\"UTF-8\"\r\n",
+            "\r\n",
+            "<p>Informaci&oacute;n &amp; m&aacute;s&nbsp;texto</p>\r\n"
+        );
+        let email = parse_eml(raw).expect("html email parses");
+        assert_eq!(email.body.trim(), "Información & más texto");
+    }
+
+    #[test]
+    fn multipart_prefers_plain_over_html() {
+        let raw = concat!(
+            "From: Banco <avisos@bancoejemplo.test>\r\n",
+            "Subject: Aviso\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/alternative; boundary=\"alt\"\r\n",
+            "\r\n",
+            "--alt\r\n",
+            "Content-Type: text/plain; charset=\"UTF-8\"\r\n",
+            "\r\n",
+            "Texto plano\r\n",
+            "--alt\r\n",
+            "Content-Type: text/html; charset=\"UTF-8\"\r\n",
+            "\r\n",
+            "<p>Texto HTML</p>\r\n",
+            "--alt--\r\n"
+        );
+        let email = parse_eml(raw).expect("multipart email parses");
+        assert!(email.body.contains("Texto plano"), "body was: {}", email.body);
+        assert!(!email.body.contains("Texto HTML"), "body was: {}", email.body);
+    }
+
+    #[test]
+    fn html_only_multipart_alternative_falls_back_to_html() {
+        let raw = concat!(
+            "From: Banco <avisos@bancoejemplo.test>\r\n",
+            "Subject: Aviso\r\n",
+            "MIME-Version: 1.0\r\n",
+            "Content-Type: multipart/alternative; boundary=\"alt\"\r\n",
+            "\r\n",
+            "--alt\r\n",
+            "Content-Type: text/html; charset=\"UTF-8\"\r\n",
+            "\r\n",
+            "<p>Recibiste un pago</p>\r\n",
+            "--alt--\r\n"
+        );
+        let email = parse_eml(raw).expect("html-only multipart parses");
+        assert!(email.body.contains("Recibiste un pago"), "body was: {}", email.body);
+    }
 }
