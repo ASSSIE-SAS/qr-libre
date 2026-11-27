@@ -24,7 +24,10 @@ import androidx.compose.ui.unit.dp
 import co.asssie.qrlibre.R
 
 @Composable
-fun QrLibreApp() {
+fun QrLibreApp(
+    notificationAccess: Boolean,
+    onOpenNotificationSettings: () -> Unit,
+) {
     var tab by rememberSaveable { mutableStateOf(0) }
     val tabLabels = listOf(R.string.tab_history, R.string.tab_apps, R.string.tab_privacy)
 
@@ -66,7 +69,13 @@ fun QrLibreApp() {
                 }
             }
 
-            ScaffoldMessage(stringResource(tabLabels[tab]))
+            when (tab) {
+                0 -> HistoryScreen(
+                    notificationAccess = notificationAccess,
+                    onOpenNotificationSettings = onOpenNotificationSettings,
+                )
+                else -> ScaffoldMessage(stringResource(tabLabels[tab]))
+            }
         }
     }
 }
