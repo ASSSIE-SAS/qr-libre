@@ -45,12 +45,23 @@ Fuera:
 
 ## Tareas
 
-- [ ] **T1** Contrato `BankRule`, `RawEmail`, `PaymentObservation`, `Confidence` y registro de reglas.
-- [ ] **T2** Lector `.eml` → `RawEmail`, con MIME y codificaciones.
-- [ ] **T3** Parser de montos colombianos con pruebas de casos límite.
-- [ ] **T4** Regla de ejemplo sobre banco ficticio y su fixture sintético.
-- [ ] **T5** CLI `parse-eml` con salida texto y `--json`.
-- [ ] **T6** Documentar en el README del crate cómo agregar un banco con una muestra real.
+- [x] **T1** Contrato `BankRule`, `RawEmail`, `PaymentObservation`, `Confidence` y registro de reglas.
+- [x] **T2** Lector `.eml` → `RawEmail`, con MIME y codificaciones.
+- [x] **T3** Parser de montos colombianos con pruebas de casos límite.
+- [x] **T4** Regla de ejemplo sobre banco ficticio y su fixture sintético.
+- [x] **T5** CLI `parse-eml` con salida texto y `--json`.
+- [x] **T6** Documentar en el README del crate cómo agregar un banco con una muestra real.
+- [x] **T7** Fallback a `text/html` cuando el correo no trae `text/plain`.
+- [x] **T8** Estilos de número (`Colombian` y `Anglo`) sin adivinar el ambiguo.
+- [x] **T9** Regla real de Bancolombia y su fixture sintético.
+
+## Hallazgos del correo real (Bancolombia)
+
+- El aviso es `multipart/alternative` con **solo `text/html`**; no hay parte de texto plano.
+- El remitente es `ayn.notificacionesbancolombia.com` y el asunto `Alertas y Notificaciones`.
+- El monto viene en **formato anglosajón**: `35,000,000.00`. La convención colombiana habría leído mal esa cifra.
+- La frase es estable: `Recibiste un pago <PAGADOR> de <ENTIDAD> por $<MONTO> en tu cuenta de <TIPO> el <DD/MM/YYYY> a las <HH:MM>.`
+- Verificado contra el correo real: banco, monto y `occurred_at` con `-05:00` correctos. El correo real vive en `backend/fixtures/private/`, ignorado por git.
 
 ## Criterios de aceptación
 
