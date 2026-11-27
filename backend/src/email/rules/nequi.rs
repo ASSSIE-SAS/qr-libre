@@ -242,6 +242,26 @@ el comprobante.";
     }
 
     #[test]
+    fn converts_midnight_and_noon() {
+        assert_eq!(
+            spanish_date_time("27 de noviembre de 2026 a las 12:05 a.m, desde el banco Ficticio."),
+            Some("2026-11-27T00:05:00-05:00".to_string())
+        );
+        assert_eq!(
+            spanish_date_time("27 de noviembre de 2026 a las 12:45 p.m., desde el banco Ficticio."),
+            Some("2026-11-27T12:45:00-05:00".to_string())
+        );
+        assert_eq!(
+            spanish_date_time("27 de noviembre de 2026 a las 12:00 a.m."),
+            Some("2026-11-27T00:00:00-05:00".to_string())
+        );
+        assert_eq!(
+            spanish_date_time("27 de noviembre de 2026 a las 12:00 p.m."),
+            Some("2026-11-27T12:00:00-05:00".to_string())
+        );
+    }
+
+    #[test]
     fn supports_all_meridiem_spellings() {
         for marker in ["a.m", "a.m.", "p.m", "p.m.", "A.M.", "P.M"] {
             let body = format!(

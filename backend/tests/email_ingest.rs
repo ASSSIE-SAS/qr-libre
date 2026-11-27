@@ -225,6 +225,34 @@ fn nequi_sender_without_payment_sentence_returns_none() {
 }
 
 #[test]
+fn nequi_handles_midnight_and_noon() {
+    for (clock, marker, expected) in [
+        ("12:05", "a.m", "2026-11-27T00:05:00-05:00"),
+        ("12:45", "p.m.", "2026-11-27T12:45:00-05:00"),
+    ] {
+        let raw = format!(
+            concat!(
+                "From: Nequi <notificaciones@nequi.com.co>\r\n",
+                "Subject: Aviso\r\n",
+                "MIME-Version: 1.0\r\n",
+                "Content-Type: text/plain; charset=\"UTF-8\"\r\n",
+                "\r\n",
+                "Recibiste 2.500.000 de Remitente Ficticio el 27 de noviembre de 2026 ",
+                "a las {} {}, desde el banco Banco Ficticio.\r\n"
+            ),
+            clock, marker
+        );
+        let email = parse_eml(&raw).expect("email parses");
+        let observation = observe(&email).expect("nequi rule matches");
+        assert_eq!(
+            observation.occurred_at.as_deref(),
+            Some(expected),
+            "clock {clock} {marker}"
+        );
+    }
+}
+
+#[test]
 fn bancolombia_fixture_yields_high_confidence_observation() {
     let email = parse_eml(BANCOLOMBIA_FIXTURE).expect("bancolombia fixture parses");
     assert!(email.body.contains("Recibiste un pago"), "body: {}", email.body);
