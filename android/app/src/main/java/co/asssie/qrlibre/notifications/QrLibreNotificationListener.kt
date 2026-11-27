@@ -42,7 +42,7 @@ class QrLibreNotificationListener : NotificationListenerService() {
             if (rowId > 0) CaptureEvents.notifyChanged()
         } catch (error: Exception) {
             // A listener must never crash the notification pipeline.
-            Log.w(TAG, "No se pudo guardar el aviso de $sourcePackage", error)
+            Log.w(TAG, "Could not save notification from $sourcePackage", error)
         }
     }
 
