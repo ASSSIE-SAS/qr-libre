@@ -46,6 +46,12 @@ class MainActivity : ComponentActivity() {
         notificationAccess = NotificationAccess.isGranted(this)
     }
 
+    override fun onStop() {
+        // Leaving the app (Home, another app) should not keep speaking.
+        tts?.stop()
+        super.onStop()
+    }
+
     override fun onDestroy() {
         tts?.stop()
         tts?.shutdown()

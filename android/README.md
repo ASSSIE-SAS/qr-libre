@@ -24,8 +24,9 @@ payment was confirmed.
 - **Privacidad**: what it reads, where it stays, how to delete it, and what it
   does not do.
 - **Leer en voz alta**: a `TextToSpeech` engine initialised by `MainActivity`
-  speaks one fixed Spanish sentence. A failed engine shows a message; the
-  engine is stopped and shut down in `onDestroy`.
+  speaks one fixed Spanish sentence. A failed engine shows a message; speech
+  stops when the app leaves the foreground and the engine is shut down in
+  `onDestroy`.
 
 ## Requirements
 
