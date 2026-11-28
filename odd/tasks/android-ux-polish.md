@@ -1,6 +1,6 @@
 # Android UX polish — preparation and work-unit plan
 
-**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 IMPLEMENTED — PENDING PARENT REVIEW; AUP-4..AUP-6 NOT STARTED
+**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 IMPLEMENTED — PENDING PARENT REVIEW; AUP-5..AUP-6 NOT STARTED
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
@@ -13,11 +13,12 @@ file, test, Gradle file, README or design token and made no device operation.
 `git status --porcelain` was empty at inspection time and the only file the
 preparation produced was this artifact.
 
-**Current execution.** AUP-1 and AUP-2 are accepted by the parent after reading
-their actual diffs and rerunning the focused tests. AUP-3 is implemented and
-locally committed, pending parent review; AUP-4 to AUP-6 are not started.
+**Current execution.** AUP-1, AUP-2 and AUP-3 are accepted by the parent after
+reading their actual diffs and rerunning the focused tests. AUP-4 is implemented
+and locally committed, pending parent review; AUP-5 and AUP-6 are not started.
 Nothing has been pushed, merged or installed, and no device validation has been
-run. Implementation evidence is in §10.
+run. Implementation evidence is in §10 and
+`odd/tasks/android-ux-polish-aup4-report.md`.
 
 Technical prose is English. In-app copy is Spanish, quoted exactly where it is
 authorized.
@@ -39,9 +40,14 @@ with its parent review and local work-unit commit; do not duplicate it.
       4 `ListenerConnectionTest`, 3 `HistoryPresentationTest`). Evidence in §10.
       The parked `ActiveSummary` fixed Row/ellipsis large-text count issue is
       deferred to AUP-5.
-- [ ] **AUP-3** Full capture detail with explicit, truthful copy
-      — implemented in `a6e3573`; pending parent review
+- [x] **AUP-3** Full capture detail with explicit, truthful copy
+      — accepted by the parent after reading the actual diff and rerunning
+      `CaptureCopyTest`; implementation commit `a6e3573`, 22 total tests green.
+      The primitive-fields copy helper (rather than a `Capture` object) is
+      accepted as pure and used by the UI. Evidence in §10.
 - [ ] **AUP-4** Accurate today aggregate across the whole table
+      — implemented in `1c37349`; pending parent review. Evidence in §10 and
+      `odd/tasks/android-ux-polish-aup4-report.md`.
 - [ ] **AUP-5** Large text, touch targets, keyboard and contrast
 - [ ] **AUP-6** Compact local-first privacy; final visual/device validation
 
@@ -878,7 +884,7 @@ _Kept as history; current AUP-1 results are in §10._
 
 - **Loaded:** `/Users/erik/.agents/skills/work-unit-commits/SKILL.md` and
   `/Users/erik/.agents/skills/impeccable/reference/product.md` (preparation);
-  for AUP-1, AUP-2 and AUP-3 also
+  for AUP-1 through AUP-4 also
   `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/SKILL.md`
   and
   `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/writing-good-tests.md`
@@ -1024,7 +1030,7 @@ is included; below the 400 advisory.
 fixed in AUP-3. The branch still needs the deferred device matrix before any
 PASS.
 
-### AUP-3 — implemented, local commit only, pending parent review
+### AUP-3 — accepted by the parent
 
 **TDD evidence (JUnit4 only, offline).** The pure clipboard payload builder
 `data/CaptureCopy.kt` was first written as a deliberately wrong stub that
@@ -1100,5 +1106,80 @@ Authored lines: **303** (297 additions + 6 deletions), inside the 300–340
 forecast and below the 400 advisory.
 
 **Commit:** `a6e3573` feat(android): add a full notification detail view
-(source, test, strings and README). A following docs commit records this
-evidence. Not accepted yet.
+(source, test, strings and README); `5ac4f37` records this evidence.
+
+**Parent acceptance.** The parent read the actual AUP-3 diff and reran the
+focused `CaptureCopyTest` → PASS. The writer's full run was 22/22 tests green
+(7 `NotificationTextTest`, 3 `ListenerStatusTest`, 4 `ListenerConnectionTest`,
+3 `HistoryPresentationTest`, 5 `CaptureCopyTest`). AUP-3 is accepted. The
+parent also accepted the copy helper taking primitive fields instead of a
+`Capture` object: it is pure and the UI uses the actual helper. The branch
+still needs the deferred device matrix before any PASS.
+
+### AUP-4 — implemented, local commit only, pending parent review
+
+**TDD evidence (JUnit4 only, offline).** `data/DayWindow.kt` was first written
+as a deliberately wrong stub (`LocalDayRange(0, 0)` and a zero delay) after the
+real `DayWindowTest` compiled, so RED was behavioral. Focused RED: 7 tests
+completed, 7 failed with `java.lang.AssertionError`, e.g.
+`expected:<1772946000000> but was:<0>`,
+`delay must be positive at 2026-11-28T00:00:00` and
+`Colombia has no daylight saving time on 2026-03-08T12:00:00
+expected:<86400000> but was:<0>`. GREEN after the `java.time` implementation:
+focused `DayWindowTest` → `BUILD SUCCESSFUL`, 7/7 tests. Full verification after
+the SQL and UI edits:
+`./gradlew --offline testDebugUnitTest assembleDebug --rerun-tasks` →
+`BUILD SUCCESSFUL`, 41/41 tasks executed, 29/29 tests (7 `NotificationTextTest`,
+3 `ListenerStatusTest`, 4 `ListenerConnectionTest`, 3
+`HistoryPresentationTest`, 5 `CaptureCopyTest`, 7 `DayWindowTest`), 0 failures,
+0 errors, 0 skipped; no compiler warnings; `aapt dump permissions` lists no
+`android.permission.INTERNET`. The complete RED/GREEN output is in
+`odd/tasks/android-ux-polish-aup4-report.md`.
+
+**What shipped**
+- `data/DayWindow.kt`: pure half-open `LocalDayRange` between local midnight and
+  the next local midnight, built with `java.time` so month/year rollover,
+  Bogota's fixed UTC-5 offset and DST zones (23h/25h days) stay correct;
+  `millisUntilNextLocalMidnight` is clamped to at least 1 ms.
+- `data/CapturesDb.kt`: `countCapturesBetween(startMsInclusive, endMsExclusive):
+  Long` runs `SELECT COUNT(*) FROM captures WHERE epoch_ms >= ? AND epoch_ms < ?`
+  on the readable database with `use`. No schema bump; `DB_VERSION` stays 1 and
+  the existing `epoch_ms` index is reused.
+- `ui/HistoryScreen.kt`: the list-based `isToday`/`Calendar` count is gone. One
+  IO coroutine loads the newest-500 list and the whole-table count;
+  `todayCount: Long?` is null (rendered `—`) until the read completes and after
+  a failed read, so an unread total is never shown as a known zero. Refreshes
+  are keyed on `CaptureEvents.version` and `dayTick`, fed by an in-process
+  midnight timer (`millisUntilNextLocalMidnight(...) + 1 s`, restarted after
+  each refresh), `LifecycleEventEffect(ON_RESUME)` and a runtime
+  `ACTION_TIME_CHANGED`/`ACTION_TIMEZONE_CHANGED` receiver registered with
+  `RECEIVER_NOT_EXPORTED` and unregistered on dispose. No OS job, service,
+  manifest receiver or new permission. Saved rows, the detail view and the
+  4-line card body are unchanged in every listener state.
+- `android/README.md`: full-table today count, the three refresh triggers, the
+  unknown marker and the SQL-test limitation; `DayWindowTest` in the test map.
+
+**Static evidence.** No `isToday` or `Calendar` remains in `HistoryScreen.kt`;
+`countCapturesBetween`, `localDayRange`, `millisUntilNextLocalMidnight`,
+`LifecycleEventEffect`, `registerReceiver`, `unregisterReceiver` and both time
+actions are wired in `app/src/main`; no `AlarmManager`, `JobScheduler` or
+`WorkManager`; `DB_VERSION` is unchanged. The
+`DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` visible in `aapt` comes
+unconditionally from the pre-existing `androidx.core:core:1.13.1` manifest
+(manifest-merger blame), not from this change, and `INTERNET` stays absent.
+
+**Limits.** The pure boundary tests do not test the SQL count. The JUnit-only
+classpath cannot execute `SQLiteOpenHelper`; adding Robolectric or
+instrumentation is forbidden by the no-new-dependency rule. The query's
+inclusive lower bound, exclusive upper bound and index use are source-inspected
+only, which is **not** SQL runtime PASS; an independent verifier may later run
+it against an isolated database without touching real device records. The
+midnight timer, resume refresh and dynamic receiver are deferred to the AUP-6
+manual matrix. Authored lines: **286** (268 additions + 18 deletions), above
+the 210–250 forecast because the boundary suite is included; below the 400
+advisory.
+
+**Commit:** `1c37349` fix(android): count today's captures across the whole
+table (source, test and README). A following docs commit records this evidence;
+the detailed RED/GREEN output is in the local, git-ignored
+`odd/tasks/android-ux-polish-aup4-report.md`. Not accepted yet.
