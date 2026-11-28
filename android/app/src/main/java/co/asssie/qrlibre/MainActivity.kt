@@ -44,6 +44,9 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // The user may have flipped the switch in system settings.
         notificationAccess = NotificationAccess.isGranted(this)
+        // A force-stop or a reboot leaves the listener unbound even while the
+        // setting stays on. Asking the system to rebind fixes that on open.
+        NotificationAccess.requestRebind(this)
     }
 
     override fun onStop() {
