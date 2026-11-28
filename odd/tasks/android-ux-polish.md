@@ -1,6 +1,6 @@
 # Android UX polish — preparation and work-unit plan
 
-**Status:** AUP-1 IMPLEMENTED — PENDING PARENT REVIEW; AUP-2..AUP-6 NOT STARTED
+**Status:** AUP-1 ACCEPTED; AUP-2..AUP-6 NOT STARTED
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
@@ -13,9 +13,10 @@ file, test, Gradle file, README or design token and made no device operation.
 `git status --porcelain` was empty at inspection time and the only file the
 preparation produced was this artifact.
 
-**Current execution.** AUP-1 is implemented and committed locally; AUP-2 to
-AUP-6 are not started. Nothing has been pushed, merged or installed, and no
-device validation has been run. Implementation evidence is in §10.
+**Current execution.** AUP-1 is accepted by the parent after reading the actual
+diff and rerunning the focused `ListenerStatusTest`. AUP-2 to AUP-6 are not
+started. Nothing has been pushed, merged or installed, and no device validation
+has been run. Implementation evidence is in §10.
 
 Technical prose is English. In-app copy is Spanish, quoted exactly where it is
 authorized.
@@ -25,8 +26,11 @@ authorized.
 This is the single authoritative checklist. Update it only when a task closes
 with its parent review and local work-unit commit; do not duplicate it.
 
-- [ ] **AUP-1** Truthful listener state (permission ≠ connected ≠ apps selected)
-      — implemented and locally committed; pending parent review
+- [x] **AUP-1** Truthful listener state (permission ≠ connected ≠ apps selected)
+      — accepted by the parent after an actual diff read and a focused
+      `ListenerStatusTest` rerun; implementation commit `6d77533`, 14 total
+      tests green (7 `NotificationTextTest`, 3 `ListenerStatusTest`,
+      4 `ListenerConnectionTest`). Evidence in §10.
 - [ ] **AUP-2** First-run hierarchy and truthful history note
 - [ ] **AUP-3** Full capture detail with explicit, truthful copy
 - [ ] **AUP-4** Accurate today aggregate across the whole table
@@ -883,7 +887,7 @@ _Kept as history; current AUP-1 results are in §10._
 
 ## 10. Implementation log
 
-### AUP-1 — implemented, local commits only, pending parent review
+### AUP-1 — accepted by the parent
 
 **TDD evidence (JUnit4 only, offline).** RED was observed before the real
 implementation with deliberately wrong skeletons, and it was behavioral, not a
@@ -923,3 +927,10 @@ the source commit.
 
 **Commits:** `d26db05` docs(odd) plan; `6d77533` fix(android) AUP-1
 implementation, tests, README and checklist; this docs update records both.
+
+**Parent acceptance.** The parent read the actual AUP-1 diff and reran
+`./gradlew --offline testDebugUnitTest --tests "co.asssie.qrlibre.notifications.ListenerStatusTest"`
+→ `BUILD SUCCESSFUL`. The acceptance evidence is commit `6d77533` and 14 total
+tests green: 7 `NotificationTextTest`, 3 `ListenerStatusTest`, 4
+`ListenerConnectionTest` (writer run plus the parent focused rerun). AUP-1 is
+accepted; the branch still needs the deferred device matrix before any PASS.
