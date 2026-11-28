@@ -1,6 +1,6 @@
 # Android UX polish — preparation and work-unit plan
 
-**Status:** AUP-1 ACCEPTED; AUP-2..AUP-6 NOT STARTED
+**Status:** AUP-1 ACCEPTED; AUP-2 IMPLEMENTED — PENDING PARENT REVIEW; AUP-3..AUP-6 NOT STARTED
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
@@ -14,9 +14,10 @@ file, test, Gradle file, README or design token and made no device operation.
 preparation produced was this artifact.
 
 **Current execution.** AUP-1 is accepted by the parent after reading the actual
-diff and rerunning the focused `ListenerStatusTest`. AUP-2 to AUP-6 are not
-started. Nothing has been pushed, merged or installed, and no device validation
-has been run. Implementation evidence is in §10.
+diff and rerunning the focused `ListenerStatusTest`. AUP-2 is implemented and
+locally committed, pending parent review; AUP-3 to AUP-6 are not started.
+Nothing has been pushed, merged or installed, and no device validation has been
+run. Implementation evidence is in §10.
 
 Technical prose is English. In-app copy is Spanish, quoted exactly where it is
 authorized.
@@ -32,6 +33,7 @@ with its parent review and local work-unit commit; do not duplicate it.
       tests green (7 `NotificationTextTest`, 3 `ListenerStatusTest`,
       4 `ListenerConnectionTest`). Evidence in §10.
 - [ ] **AUP-2** First-run hierarchy and truthful history note
+      — implemented in `a82095c`; pending parent review
 - [ ] **AUP-3** Full capture detail with explicit, truthful copy
 - [ ] **AUP-4** Accurate today aggregate across the whole table
 - [ ] **AUP-5** Large text, touch targets, keyboard and contrast
@@ -870,7 +872,7 @@ _Kept as history; current AUP-1 results are in §10._
 
 - **Loaded:** `/Users/erik/.agents/skills/work-unit-commits/SKILL.md` and
   `/Users/erik/.agents/skills/impeccable/reference/product.md` (preparation);
-  for AUP-1 also
+  for AUP-1 and AUP-2 also
   `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/SKILL.md`
   and
   `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/writing-good-tests.md`
@@ -934,3 +936,75 @@ implementation, tests, README and checklist; this docs update records both.
 tests green: 7 `NotificationTextTest`, 3 `ListenerStatusTest`, 4
 `ListenerConnectionTest` (writer run plus the parent focused rerun). AUP-1 is
 accepted; the branch still needs the deferred device matrix before any PASS.
+
+### AUP-2 — implemented, local commit only, pending parent review
+
+**TDD evidence (JUnit4 only, offline).** A small pure presentation policy,
+`ui/HistoryPresentation.kt`, was introduced first so the gating decisions the
+screen consumes are testable without Compose UI dependencies: `showCaptures`,
+`showEmptyHistory` and `showVoiceTest` from `status` plus `hasCaptures`. RED was
+observed with a deliberately wrong stub (all `false`/`true` inverted) after the
+new test compiled: 3 focused tests ran, 3 failed on assertions, not compile
+errors:
+
+```
+HistoryPresentationTest > voiceTestOnlyAppearsWhenCaptureIsActive FAILED
+    java.lang.AssertionError at HistoryPresentationTest.kt:41
+HistoryPresentationTest > emptyHistoryIsOnlyOfferedInTheActiveState FAILED
+    java.lang.AssertionError at HistoryPresentationTest.kt:29
+HistoryPresentationTest > savedCapturesStayVisibleInEveryListenerState FAILED
+    java.lang.AssertionError at HistoryPresentationTest.kt:19
+
+3 tests completed, 3 failed
+BUILD FAILED
+```
+
+Exact assertion messages from the JUnit XML:
+`no voice test before capture is active for PERMISSION_MISSING expected:<false> but was:<true>`;
+`no empty billboard before setup for PERMISSION_MISSING expected:<false> but was:<true>`;
+`saved captures must stay visible for PERMISSION_MISSING expected:<true> but was:<false>`.
+GREEN after the minimal policy implementation: focused
+`HistoryPresentationTest` → `BUILD SUCCESSFUL`, 3/3 tests. Full verification after
+the UI, strings and README edits:
+`./gradlew --offline testDebugUnitTest assembleDebug` → `BUILD SUCCESSFUL`,
+17/17 tests (7 `NotificationTextTest`, 3 `ListenerStatusTest`, 4
+`ListenerConnectionTest`, 3 `HistoryPresentationTest`), 0 failures, 0 errors,
+0 skipped; no compiler warnings; `aapt dump permissions` lists no
+`android.permission.INTERNET`.
+
+**What shipped**
+- `ui/HistoryPresentation.kt`: pure visibility policy. Saved captures are never
+  gated by status; the empty billboard and the voice test are active-only.
+- `ui/HistoryScreen.kt`: compact `PermissionCard` (single "Dar acceso" action),
+  compact `SetupCard` ("Apps que quieres registrar", primary "Elegir apps"),
+  compact `CONNECTING` status card ("Revisar ajustes"), and a compact
+  `ActiveSummary` with a lime dot, "Escuchando", and the today count inline at
+  `titleLarge` (no `displayLarge`). The history note is always rendered; the
+  voice sample moved below the list/empty content and only renders when active;
+  saved rows render for every status.
+- `res/values/strings.xml`: `history_note`
+  ("Son notificaciones guardadas, no confirmaciones de pago."), `voice_no_auto`
+  ("La voz solo lee una frase de prueba. La app no anuncia avisos
+  automáticamente.") and `apps_headline` changed to
+  "Apps que quieres registrar".
+- README: first-run hierarchy, stored-notifications note, saved-row persistence,
+  app heading and manual-only voice sample.
+- The AUP-1 resolver, connection signal and selection signal are unchanged.
+
+**Static evidence.** No `displayLarge` remains in `HistoryScreen.kt`;
+`history_note`, `voice_no_auto` and `apps_headline` are present and referenced;
+`VoiceTest` and `EmptyHistory` each have one call site reached only through the
+tested `HistoryPresentation` fields (the `ListenerUiState.ACTIVE` guard lives in
+the policy, not duplicated at the call sites); `aapt` shows no `INTERNET`.
+
+**Limits.** Visual hierarchy, the compact summary layout and font-scale behavior
+still need the deferred device matrix (AUP-6). No Compose UI test is possible
+without new dependencies, so element presence is covered by the pure policy plus
+code review. The `todayCount` source is intentionally unchanged until AUP-4.
+Authored lines: **367** (265 additions + 102 deletions), above the 200–230
+forecast because the card was split into three focused composables and the test
+is included; below the 400 advisory.
+
+**Commit:** `a82095c` feat(android): lead first run with one setup action
+(source, test, strings and README). A following docs commit records this
+evidence and the review status. Not accepted yet.
