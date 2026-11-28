@@ -1,28 +1,43 @@
-# Android UX polish — preparation and work-unit plan
+# Android UX polish — implementation and review record
 
-**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 ACCEPTED; AUP-5 REOPENED/FIXED — PENDING PARENT ACCEPTANCE; AUP-6 IMPLEMENTED — PENDING PARENT REVIEW
+**Status:** Implemented and code-reviewed; extended device validation pending
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
+**Reviewed HEAD before this record:** `cf78b47 docs(odd): record the AUP-5 Apps keyboard-open chrome fix`
 **Artifact:** this file (`odd/tasks/android-ux-polish.md`)
-**Implementer:** DeepSeek (after the preflight decisions below)
+**Implementer:** DeepSeek
 **Reviewers:** parent session for every task; independent final verifier after AUP-6
 
-**History.** The preparation phase (committed as `d26db05`) edited no source
-file, test, Gradle file, README or design token and made no device operation.
-`git status --porcelain` was empty at inspection time and the only file the
-preparation produced was this artifact.
+This is not a final PASS. All six tasks are implemented and code-reviewed, but
+extended physical validation remains pending. No push, PR, default-branch merge
+or other remote delivery was performed; `main` is untouched.
 
-**Current execution.** AUP-1, AUP-2, AUP-3 and AUP-4 are accepted by the
-parent after reading their actual diffs and rerunning the focused tests. AUP-4
-acceptance covers the diff and `DayWindowTest`; the SQL platform/runtime
-behavior is still explicitly pending and is not claimed as an executed runtime
-PASS. AUP-5 was implemented in `040be54`, corrected for landscape side insets in
-`e6c798d`, and reopened again after the independent final verifier reproduced a
-blocking keyboard-open Apps-list defect; the chrome fix is `c030819` and awaits
-parent acceptance. AUP-6 is implemented in `2f8ffb9` and remains pending parent
-review; the 200% font matrix is still pending. Nothing has been pushed or
-merged. Implementation evidence is in §10,
+**Implementation range.** `6d77533` AUP-1, `a82095c` AUP-2, `a6e3573` AUP-3,
+`1c37349` AUP-4, `040be54` AUP-5 with corrections `e6c798d` (horizontal safe
+insets) and `c030819` (landscape IME chrome), `2f8ffb9` AUP-6. Review/evidence
+docs follow each implementation commit; `cf78b47` is the last review-doc commit
+before this record.
+
+**Parent review.** The parent read the actual diffs for every source task and
+the three-tab screenshots, and reran each focused test. The latest full parent
+build, `./gradlew --offline testDebugUnitTest assembleDebug`, reported **40
+Android tests, 0 failures, 0 errors**.
+
+**Independent verification.** A fresh DeepSeek verifier ran the baseline **36
+Android tests** and **50 backend tests**, and confirmed no `INTERNET`, no new
+dependencies and no schema change. It found the landscape + IME zero-list bug,
+which `c030819` corrected, then reverified on the actual phone at 2400x1080 and
+font scale 1.0: the IME-open list viewport was 284px with rows and scroll, the
+query was retained after closing the keyboard, and it found no defect caused by
+the fix. Report:
+`/private/var/folders/ff/hrsxp6x120z072qb2t7ccxq40000gp/T/opencode/qr-ux-independent-final.md`.
+
+**History (preparation, kept for provenance).** Preparation was committed as
+`d26db05`; it edited no source file, test, Gradle file, README or design token
+and made no device operation. The former "no source work occurred" statements
+in §1 and §8 describe that preparation baseline, not the current tree.
+Implementation evidence is in §10,
 `odd/tasks/android-ux-polish-aup5-report.md` and
 `odd/tasks/android-ux-polish-aup6-report.md` (the AUP-4 report remains the record
 for that task).
@@ -30,50 +45,87 @@ for that task).
 Technical prose is English. In-app copy is Spanish, quoted exactly where it is
 authorized.
 
-## 0. Stable execution checklist
+## 0. Status checklist
 
-This is the single authoritative checklist. Update it only when a task closes
-with its parent review and local work-unit commit; do not duplicate it.
+### Implemented and code-reviewed
 
-- [x] **AUP-1** Truthful listener state (permission ≠ connected ≠ apps selected)
-      — accepted by the parent after an actual diff read and a focused
-      `ListenerStatusTest` rerun; implementation commit `6d77533`, 14 total
-      tests green (7 `NotificationTextTest`, 3 `ListenerStatusTest`,
-      4 `ListenerConnectionTest`). Evidence in §10.
-- [x] **AUP-2** First-run hierarchy and truthful history note
-      — accepted by the parent after an actual full diff read and a focused
-      `HistoryPresentationTest` rerun; implementation commit `a82095c`, 17 total
-      tests green (7 `NotificationTextTest`, 3 `ListenerStatusTest`,
-      4 `ListenerConnectionTest`, 3 `HistoryPresentationTest`). Evidence in §10.
-      The parked `ActiveSummary` fixed Row/ellipsis large-text count issue is
-      deferred to AUP-5.
-- [x] **AUP-3** Full capture detail with explicit, truthful copy
-      — accepted by the parent after reading the actual diff and rerunning
-      `CaptureCopyTest`; implementation commit `a6e3573`, 22 total tests green.
-      The primitive-fields copy helper (rather than a `Capture` object) is
-      accepted as pure and used by the UI. Evidence in §10.
-- [x] **AUP-4** Accurate today aggregate across the whole table
-      — accepted by the parent after reading the actual diff and rerunning
-      `DayWindowTest`; implementation commit `1c37349`, 29 total tests green at
-      acceptance (`writer` run). The SQL platform/runtime behavior remains
-      explicitly pending (see §10), not accepted as a runtime PASS. Evidence in
-      §10 and `odd/tasks/android-ux-polish-aup4-report.md`.
-- [ ] **AUP-5** Large text, touch targets, keyboard and contrast
-      — implemented in `040be54`; landscape side inset corrected in `e6c798d`;
-      reopened after the independent final verifier found no usable Apps list
-      with the IME open and fixed in `c030819`; pending parent acceptance.
-      Evidence in §10 and `odd/tasks/android-ux-polish-aup5-report.md`.
-- [ ] **AUP-6** Compact local-first privacy; final visual/device validation
-      — implemented in `2f8ffb9`; pending parent review and the independent
-      verifier's large-font matrix. Evidence in §10 and
-      `odd/tasks/android-ux-polish-aup6-report.md`.
+All six items below have an implementation commit, an actual parent diff read
+and a parent focused-test rerun. This is code acceptance, not a runtime PASS.
+
+- [x] **AUP-1** Truthful listener state — `6d77533`
+- [x] **AUP-2** First-run hierarchy and truthful history note — `a82095c`
+- [x] **AUP-3** Full capture detail with explicit, truthful copy — `a6e3573`
+- [x] **AUP-4** Accurate today aggregate across the whole table — `1c37349`
+- [x] **AUP-5** Large text, touch targets, keyboard and contrast — `040be54`,
+      with `e6c798d` horizontal safe insets and `c030819` IME chrome
+- [x] **AUP-6** Compact local-first privacy — `2f8ffb9`
+
+AUP-5 and AUP-6 are incomplete **only** in the extended device matrix. The
+parent's actual 100% font, landscape/current empty-history state visual review
+passed; the 200% font path, TalkBack and populated runtime checks are not done.
+
+### Extended validation — unchecked, pending consent
+
+The user has not authorized changing the font scale, permissions or selections,
+or injecting sample captures during this wave. Unit tests cover the pure logic
+but are not runtime proof. These remain open and must not be reported as PASS:
+
+- [ ] Font scale 200% across the three tabs and the populated History/detail
+- [ ] Actual captured-record detail: open, scroll, system/back navigation, copy and clipboard behavior
+- [ ] Android `SQLiteOpenHelper` / actual `COUNT(*)` runtime behavior
+- [ ] Listener permission and connection transitions on device
+- [ ] Physical midnight, time-zone and resume refresh behavior
+- [ ] TalkBack labels/reading order and touch-target behavior
 
 ---
 
-## 1. Verified current behavior
+## 0.1 Review slices
 
-These are the facts the task split is based on; each one was read from the
-working tree, not inferred.
+One task per review slice, in execution order; no slice bundles two tasks and
+no out-of-order combination was used.
+
+| Slice | Task | Implementation | Review corrections |
+| --- | --- | --- | --- |
+| S1 | AUP-1 | `6d77533` | Parent diff read and `ListenerStatusTest` rerun |
+| S2 | AUP-2 | `a82095c` | Parent diff read and `HistoryPresentationTest` rerun |
+| S3 | AUP-3 | `a6e3573` | Parent diff read and `CaptureCopyTest` rerun |
+| S4 | AUP-4 | `1c37349` | Parent diff read and `DayWindowTest` rerun; SQL runtime pending |
+| S5 | AUP-5 | `040be54` | `e6c798d` horizontal safe insets; `c030819` landscape IME chrome |
+| S6 | AUP-6 | `2f8ffb9` | Parent diff read and `PrivacySectionsTest` rerun |
+
+Latest full parent build: **40 Android tests, 0 failures, 0 errors**. Independent
+baseline: **36 Android tests, 50 backend tests**, no `INTERNET`, no new
+dependencies, schema unchanged. The independent verifier's IME/landscape defect
+is the reason for `c030819`; its post-fix phone check at 2400x1080 and font 1.0
+passed, with a 284px IME-open list viewport, visible rows and scroll, and the
+query retained after closing the keyboard.
+
+### Accepted tactical changes
+
+- Truthful state: zero selected apps can never show "Escuchando"; connection
+  comes from the listener lifecycle, not from the permission alone.
+- Existing saved records stay visible and their detail stays reachable in every
+  permission/connection/selection state; only the empty onboarding billboard is
+  hidden.
+- Copy is an explicit button with a truthful clipboard reminder; no auto-copy
+  and no share action.
+- Today's total is a full-table SQL count, independent of the 500-row list, with
+  local-day boundaries and midnight/resume/time-zone refresh.
+- Accessibility: adaptive row/nav heights, large-text wrapping, contrast-safe
+  danger text, safe insets and IME-adaptive Apps chrome.
+- Privacy is compact and local-first; the no-payment-confirmation and
+  irrecoverable-deletion statements are preserved.
+- No new dependency, schema version, permission or manifest receiver was added.
+
+**Costs:** no automatic voice announcement and no payment recognition were
+added; the app still only stores notification text and offers a manual voice
+test.
+
+## 1. Baseline behavior at preparation (historical)
+
+These are the facts the task split was based on at `829e1f7`, before
+implementation; each one was read from the working tree, not inferred. They do
+not describe the current tree.
 
 | Area | Current behavior | Locator |
 | --- | --- | --- |
@@ -156,13 +208,20 @@ Baseline observed before AUP-1 source work (offline, foreground):
 
 ### 3.3 Environment and memory
 
-- Device checks were **NOT RUN DURING PREPARATION**. Device `ace242eb`
-  (POCO F3, Android 13) was used in the parent UX review and remains connected.
-  Install, validation and any device mutation are pending explicit
-  authorization and are not part of planning. Planning performs no device state
-  changes.
+- **Preparation:** device checks were not run during preparation. **Execution:**
+  device `ace242eb` (POCO F3, Android 13) was used for authorized, read-mostly
+  visual checks at 2400x1080 and font scale 1.0, including the three-tab screens
+  and the IME-open Apps list.
+- **Pending consent:** no font-scale change, permission change, selected-app
+  change, orientation/system-setting change or sample-capture injection was
+  authorized in this wave. The 200% font, populated-detail, TalkBack, listener
+  transition, SQLite runtime and physical midnight/time-zone/resume checks
+  remain open.
+- Independent verifier report:
+  `/private/var/folders/ff/hrsxp6x120z072qb2t7ccxq40000gp/T/opencode/qr-ux-independent-final.md`.
 - `gentle-ai` is not installed (`which gentle-ai` is empty). RDD status and
-  assessment are therefore unavailable, not PASS.
+  assessment are therefore unavailable, not PASS. Independent review is not a
+  native RDD PASS.
 - Engram is bound to `asssie-landing` at `/Users/erik/Desktop/notifications-pay`
   (`mem_current_project`, `project_source: git_remote`). The `qr-libre` project
   is unavailable from this session. No Engram write was made and none may be
@@ -296,14 +355,13 @@ no automatic rebind loop, no new dependency.
   rendered whenever they exist (the detail requirement is completed in AUP-3).
 - Build check: command in §6.
 
-**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` (POCO F3,
-Android 13) remains connected; install and validation are pending explicit
-authorization and no device state changes are made in planning. Deferred device
-scenarios for the AUP-6 checkpoint: revoke permission while open (saved rows
-stay visible); grant permission without a rebind (expect "Conectando"); select
-apps after the listener connects (expect "Escuchando"); deselect all (expect
-"No apps", saved rows still visible); force-stop and reopen (expect a truthful
-temporary "Conectando", not an instant "Escuchando").
+**Runtime harness.** Not yet run as a device state matrix. Device `ace242eb`
+(POCO F3, Android 13) is available, but changing permission or selection was not
+authorized in this wave. Deferred scenarios: revoke permission while open (saved
+rows stay visible); grant permission without a rebind (expect "Conectando");
+select apps after the listener connects (expect "Escuchando"); deselect all
+(expect "No apps", saved rows still visible); force-stop and reopen (expect a
+truthful temporary "Conectando", not an instant "Escuchando").
 
 **Rollback.** Remove `ListenerStatus.kt`, `ListenerConnection.kt`,
 `SelectionEvents.kt` and `ListenerStatusTest.kt`; revert the central emit in
@@ -391,10 +449,11 @@ system-settings button.
 - Deferred visual matrix (AUP-6): fresh install, granted/no-apps, connecting,
   active/empty, active/with captures, at default and large font.
 
-**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` remains
-connected; install/validation is pending authorization and planning makes no
-device state changes. The states themselves are unit-tested in AUP-1; this task
-changes hierarchy, visibility and copy only.
+**Runtime harness.** Not yet run as a state matrix. Device `ace242eb` remains
+connected; the 1.0 current-state screenshots were reviewed, but changing
+permission or selection is not authorized in this wave. The states themselves
+are unit-tested in AUP-1; this task changes hierarchy, visibility and copy
+only.
 
 **Rollback.** Restore the prior hero/`VoiceTest` call order, the `displayLarge`
 count, the old `apps_headline` string and remove `history_note`/`voice_no_auto`.
@@ -505,10 +564,10 @@ logic. Keep the existing bulk clear confirmation and all stored fields.
 - Deferred device checklist: tap a card; scroll a long body; system back and
   "Volver"; copy and verify the hint; confirm clear-history still asks first.
 
-**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` remains
-connected; install/validation is pending authorization and planning makes no
-device state changes. Clipboard and navigation are platform behaviors; the copy
-builder is the unit-tested part.
+**Runtime harness.** Not yet run on a populated record. Device `ace242eb`
+remains connected, but injecting a sample or altering existing data/selection
+was not authorized in this wave. Clipboard and navigation are platform
+behaviors; the copy builder is the unit-tested part.
 
 **Rollback.** Delete `CaptureDetail.kt`, `CaptureCopy.kt` and
 `CaptureCopyTest.kt`; revert the clickable modifier, detail state/back handling,
@@ -612,10 +671,11 @@ receiver or new permission.
   - the SQL result matches an independent on-device count (e.g. `adb`/`run-as`
     `sqlite3` query) when such access is authorized.
 
-**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` remains
-connected; install/validation is pending authorization and planning makes no
-device state changes. The boundary logic is pure and unit-tested; the SQL count,
-resume/time-zone refresh and midnight behavior need the deferred manual matrix.
+**Runtime harness.** Not yet run for SQL or clock transitions. Device
+`ace242eb` remains connected, but changing system time/time zone or reading the
+app database was not authorized in this wave. The boundary logic is pure and
+unit-tested; the SQL count, resume/time-zone refresh and midnight behavior need
+the deferred manual matrix.
 
 **Rollback.** Remove `countCapturesBetween`, `DayWindow.kt` and its test; restore
 the list-based `isToday` count and delete the timer, resume trigger and
@@ -708,10 +768,13 @@ persistence or switch semantics.
   - switch toggles once per tap (no double callback);
   - danger text is legible on cards.
 
-**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` remains
-connected; install/validation is pending authorization and planning makes no
-device state changes. Font-scale, IME and touch targets are platform/visual
-behaviors; deferred explicitly to AUP-6.
+**Runtime harness.** Partially run after implementation. Device `ace242eb` at
+2400x1080, font scale 1.0: the three-tab landscape review passed, and the
+independent verifier confirmed the IME-open Apps list (284px viewport, visible
+rows, scroll, query retained after keyboard close) with no fix-caused defect.
+**Not run:** 200% font, TalkBack and the populated-detail/selection matrix;
+these require consent to change system settings or inject samples. They are not
+PASS.
 
 **Rollback.** Restore the fixed heights, the one-line app label, the always-on
 bottom bar and the old error tokens/call-site colors; revert the
@@ -772,17 +835,16 @@ statement.
   - `rg -n "privacy_stays_body|privacy_delete_body|privacy_limit_body" android/app/src/main/java/co/asssie/qrlibre/ui/PrivacyScreen.kt` → all are rendered in the new order.
   - `rg -n "Todo se queda|Nada sale|No se puede recuperar|no es un pago verificado" android/app/src/main/res/values/strings.xml` → substance present.
 - Build check in §6.
-- Final checkpoint, NOT RUN DURING PREPARATION: once install/validation is
-  authorized on device `ace242eb` (POCO F3, Android 13), check default and 200%
-  font, scroll through every section, verify contrast and no truncation, then
-  run the full branch matrix from AUP-1, AUP-3, AUP-4 and AUP-5. Record the
-  exact device, Android version and observations. Until then the artifact
-  status is **not PASS** and planning makes no device state changes.
+- Final checkpoint, partially run: at 1.0 font and landscape on `ace242eb`
+  (POCO F3, Android 13), the five sections were reviewed in order and the screen
+  scrolled to the closing/footer. **Still open:** 200% font, TalkBack,
+  populated-detail and the full branch matrix from AUP-1, AUP-3, AUP-4 and
+  AUP-5. Those require consent to change system settings or inject samples and
+  are not PASS.
 
-**Runtime harness.** NOT RUN DURING PREPARATION; device `ace242eb` remains
-connected and install/validation is pending authorization. This is the explicit
-final visual checkpoint; it must be executed by the parent and confirmed by the
-independent final verifier before any "done" claim.
+**Runtime harness.** Partially run: the 1.0 landscape privacy review and the
+IME/landscape Apps check passed; the 200% and populated matrices were not run.
+The artifact remains **not PASS** until those authorized checks are completed.
 
 **Rollback.** Restore the five-card layout and entry order from the prior
 commit; restore the previous `privacy_intro` string. No data change.
@@ -830,13 +892,15 @@ the user.
 
 ## 6. Checks
 
-Do not run these during preparation. They are the exact commands the
-implementer/parent should use after each task (adjust `--tests` to the new test
-class where applicable):
+These were the commands used during implementation. The latest parent full run
+was:
 
 ```bash
-cd android && ANDROID_HOME=/Users/erik/Library/Android/sdk ./gradlew testDebugUnitTest assembleDebug
+cd android && ANDROID_HOME=/Users/erik/Library/Android/sdk ./gradlew --offline testDebugUnitTest assembleDebug
 ```
+
+Result: `BUILD SUCCESSFUL`, **40 Android tests, 0 failures, 0 errors**. A green
+build is not the extended runtime PASS described in §0.
 
 Focused examples:
 
@@ -868,34 +932,28 @@ The output must not contain `android.permission.INTERNET`.
 | Contrast changes touch real palette tokens | Visual identity drift | Parent-approved; tests read the production `QrLibreColorValues`, ratio math stays test-local; review the token diff |
 | Midnight / resume / time-zone edge cases | Wrong "today" count | Pure `DayWindow` tests incl. month/year/DST; in-process timer plus resume and dynamic time/time-zone receiver; manual matrix |
 | Clipboard privacy wording | Overclaiming insecurity | Say the user can paste elsewhere and that modern Android does not let background apps freely read the clipboard; no auto-copy |
-| Device checks not run during preparation | Visual regressions unproven | Device `ace242eb` remains connected; install/validation pending authorization; AUP-6 checkpoint plus independent verifier |
+| Extended device validation not run | Runtime regressions remain unproven | Code review plus 1.0 landscape/current-state checks passed; 200% font, populated detail, TalkBack, SQLite runtime, listener transitions and midnight/time-zone/resume await authorized checks |
 
-## 8. Progress and next step (preparation record)
+## 8. Preparation record (historical, superseded)
 
-_Kept as history; current AUP-1 results are in §10._
+_This section records only the planning phase before `6d77533`. It is not a
+current status. Current status is §0, review slices are §0.1, and implementation
+evidence is §10._
 
-**Done in this preparation**
+**Done during preparation**
 - Read the required skills and the actual Android sources, strings, Gradle
   config, tests, manifest, README and design tokens.
-- Verified the baseline is clean (`git status --porcelain` empty).
-- Produced exactly one file: `odd/tasks/android-ux-polish.md`.
+- Verified the baseline was clean (`git status --porcelain` empty).
+- Produced this artifact before any source change.
 
-**Not done in this preparation**
+**Not done during preparation**
 - No source, test, resource, Gradle or README edit.
 - No build, test run, install, device command or device state change, commit,
   push, branch or subagent.
 - No Engram write; no RDD assessment.
 
-**Parent actions requested**
-1. Review and approve the stable checklist, six work-unit scopes and exact
-   Spanish copy.
-2. Answer the TDD question (§3.1) before any source work.
-3. Confirm the one-task-per-slice chain plan (§3.2/§5).
-4. Assign AUP-1 to DeepSeek only after 1–3; review each task before the next,
-   and allow the local work-unit commit for each approved task.
-5. Authorize install/validation on device `ace242eb` for the AUP-6 checkpoint
-   and confirm the independent final verifier. Until then the branch is not
-   PASS.
+The planning requests from this section were subsequently authorized and
+executed; the current pending work is the extended validation checklist in §0.
 
 ## 9. Skill resolution
 
@@ -1212,7 +1270,7 @@ execution, the midnight timer, resume refresh and dynamic receiver) remains
 **explicitly pending**; it is not accepted or claimed as a runtime PASS. The
 branch still needs the deferred device matrix before any PASS.
 
-### AUP-5 — reopened and fixed, pending parent acceptance
+### AUP-5 — implemented, corrected, accepted in code review; extended device matrix pending
 
 **TDD evidence (JUnit4 only, offline).** `ui/ContrastTest.kt` was written first
 against the real theme. To keep RED behavioral instead of a compile error,
@@ -1279,8 +1337,8 @@ advisory.
 
 **Commit:** `040be54` fix(android): support large text and accessible contrast
 (source, test, strings and README). The detailed RED/GREEN output is in the
-local, git-ignored `odd/tasks/android-ux-polish-aup5-report.md`. Not accepted
-yet.
+local, git-ignored `odd/tasks/android-ux-polish-aup5-report.md`. Accepted in
+code review by the parent; the extended device matrix remains pending.
 
 **Reopened correction — landscape horizontal safe insets.** The parent's visual
 review after the AUP-6 install found a real AUP-5 acceptance gap: with the
@@ -1316,8 +1374,8 @@ cutout behavior. Authored lines: **21** (17 additions + 4 deletions).
 **Correction verification.** `./gradlew --offline testDebugUnitTest assembleDebug`
 → `BUILD SUCCESSFUL`, all **36** existing tests preserved (0 failures, 0
 errors, 0 skipped); `aapt` still lists no `android.permission.INTERNET`. The
-correction is pending the parent's visual review, and the AUP-6 200% font matrix
-remains pending. Not a final PASS.
+correction passed the parent's 1.0 landscape visual review (three tabs). The
+AUP-6 200% font matrix remains pending. Not a final PASS.
 
 **Reopened correction — Apps chrome under the landscape IME.** The independent
 final verifier reproduced a blocking AUP-5 defect at 2400x1080 landscape and
@@ -1382,9 +1440,19 @@ landscape keyboard.
 this is not a fake 200% device PASS. The IME row/scroll evidence is manual
 UI-hierarchy and screenshot evidence, not an automated Compose layout test. The
 writer has no image input; hierarchy bounds and local pixel sampling were used
-for the GREEN claim. AUP-6 remains pending; this is not a final PASS.
+for the GREEN claim. AUP-6's extended matrix remains pending; this is not a
+final PASS.
 
-### AUP-6 — implemented, local commit only, pending parent review
+**Parent review — final for AUP-5.** The parent read the actual diffs for
+`040be54`, `e6c798d` and `c030819`, reviewed the three-tab 1.0 landscape
+screenshots and reran each focused AUP-5 test. The latest full build was 40
+Android tests with 0 failures/0 errors. The independent verifier separately
+confirmed the post-`c030819` phone behavior: 2400x1080, font 1.0, 284px IME-open
+list viewport, visible rows and scroll, query retained after closing the
+keyboard, no fix-caused defect. AUP-5 is accepted at the code/review level;
+200% font and TalkBack remain unchecked pending consent.
+
+### AUP-6 — implemented, accepted in code review; extended device validation pending
 
 **TDD evidence (JUnit4 only, offline).** The production screen now renders an
 `internal` ordered `privacySections` list. To keep RED behavioral rather than a
@@ -1445,12 +1513,14 @@ only). Captures under
 
 **Limits.** The 200% font scale and the full branch device matrix were not run:
 changing the font scale would modify a system setting, which this task forbids.
-They remain pending for the independent final verifier, so this is **not** a
-device/visual PASS. Authored lines: **189** (115 additions + 74 deletions,
-including the new 45-line test), inside the ~200–230 forecast and below the 400
-advisory.
+The parent reviewed the actual 1.0 landscape/current-state screenshots; the
+200% font, TalkBack and populated-runtime checks remain pending consent, so
+this is **not** a device/visual PASS. Authored lines: **189** (115 additions +
+74 deletions, including the new 45-line test), inside the ~200–230 forecast and
+below the 400 advisory.
 
 **Commit:** `2f8ffb9` refactor(android): make the privacy screen concise and
 local-first (source, test, strings and README). Detailed RED/GREEN output and
 screenshot paths are in the local, git-ignored
-`odd/tasks/android-ux-polish-aup6-report.md`. Not accepted yet.
+`odd/tasks/android-ux-polish-aup6-report.md`. Accepted in code review by the
+parent; extended device validation remains pending.
