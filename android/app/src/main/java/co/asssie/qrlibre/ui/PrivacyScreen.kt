@@ -43,38 +43,44 @@ internal val privacySections = listOf(
 )
 
 @Composable
-internal fun PrivacyScreen() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 32.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.privacy_headline),
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+internal fun PrivacyScreen(onBack: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        BackHeader(
+            onBack = onBack,
+            modifier = Modifier.padding(start = 8.dp, end = 20.dp, top = 8.dp),
         )
-        Text(
-            text = stringResource(R.string.privacy_intro),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 6.dp, bottom = 18.dp),
-        )
-        privacySections.forEachIndexed { index, section ->
-            if (index > 0) {
-                SectionDivider()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.privacy_headline),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.privacy_intro),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp, bottom = 18.dp),
+            )
+            privacySections.forEachIndexed { index, section ->
+                if (index > 0) {
+                    SectionDivider()
+                }
+                PrivacySectionRow(section)
             }
-            PrivacySectionRow(section)
+            SectionDivider()
+            ClosingLine()
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.privacy_source),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        SectionDivider()
-        ClosingLine()
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = stringResource(R.string.privacy_source),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

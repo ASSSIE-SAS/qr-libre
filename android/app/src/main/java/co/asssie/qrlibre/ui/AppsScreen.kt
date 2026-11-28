@@ -71,7 +71,7 @@ private data class AppEntry(
 )
 
 @Composable
-internal fun AppsScreen(imeVisible: Boolean) {
+internal fun AppsScreen(imeVisible: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
     val preferences = remember { SelectedApps(context) }
     var apps by remember { mutableStateOf<List<AppEntry>?>(null) }
@@ -82,23 +82,33 @@ internal fun AppsScreen(imeVisible: Boolean) {
         apps = withContext(Dispatchers.IO) { loadLaunchableApps(context) }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val density = LocalDensity.current
-        val chrome = resolveAppsChrome(
-            imeVisible = imeVisible,
-            viewportHeightDp = maxHeight.value,
-            fontScale = density.fontScale,
+    Column(modifier = Modifier.fillMaxSize()) {
+        BackHeader(
+            onBack = onBack,
+            modifier = Modifier.padding(start = 8.dp, end = 20.dp, top = 8.dp),
         )
-        AppsContent(
-            chrome = chrome,
-            apps = apps,
-            selected = selected,
-            query = query,
-            onQueryChange = { query = it },
-            onCheckedChange = { packageName, checked ->
-                selected = preferences.setSelected(packageName, checked)
-            },
-        )
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+        ) {
+            val density = LocalDensity.current
+            val chrome = resolveAppsChrome(
+                imeVisible = imeVisible,
+                viewportHeightDp = maxHeight.value,
+                fontScale = density.fontScale,
+            )
+            AppsContent(
+                chrome = chrome,
+                apps = apps,
+                selected = selected,
+                query = query,
+                onQueryChange = { query = it },
+                onCheckedChange = { packageName, checked ->
+                    selected = preferences.setSelected(packageName, checked)
+                },
+            )
+        }
     }
 }
 

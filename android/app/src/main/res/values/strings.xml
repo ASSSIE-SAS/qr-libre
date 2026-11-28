@@ -4,9 +4,7 @@
     <string name="app_tagline">Captura de avisos. Nada sale del teléfono.</string>
     <string name="listener_label">QR Libre: captura de avisos</string>
 
-    <string name="tab_history">Historial</string>
-    <string name="tab_apps">Apps</string>
-    <string name="tab_privacy">Privacidad</string>
+    <string name="nav_back">Volver</string>
 
     <string name="history_label_today">HOY</string>
     <string name="history_headline">Tus avisos</string>
@@ -28,6 +26,11 @@
     <string name="voice_no_auto">La voz solo lee una frase de prueba. La app no anuncia avisos automáticamente.</string>
     <string name="history_empty_title">Todavía no hay avisos</string>
     <string name="history_choose_apps">Elegir apps</string>
+
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_open">Ajustes</string>
+    <string name="settings_export">Exportar avisos</string>
+    <string name="settings_export_soon">Todavía no disponible. Llegará en una próxima versión.</string>
 
     <string name="apps_headline">Apps que quieres registrar</string>
     <plurals name="apps_selected_summary">
