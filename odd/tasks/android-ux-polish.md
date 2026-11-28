@@ -1,6 +1,6 @@
 # Android UX polish — preparation and work-unit plan
 
-**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3..AUP-6 NOT STARTED
+**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 IMPLEMENTED — PENDING PARENT REVIEW; AUP-4..AUP-6 NOT STARTED
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
@@ -13,12 +13,11 @@ file, test, Gradle file, README or design token and made no device operation.
 `git status --porcelain` was empty at inspection time and the only file the
 preparation produced was this artifact.
 
-**Current execution.** AUP-1 is accepted by the parent after reading the actual
-diff and rerunning the focused `ListenerStatusTest`. AUP-2 is accepted by the
-parent after reading its actual full diff and rerunning the focused
-`HistoryPresentationTest`; the writer's full run was 17/17 tests. AUP-3 to AUP-6
-are not started. Nothing has been pushed, merged or installed, and no device
-validation has been run. Implementation evidence is in §10.
+**Current execution.** AUP-1 and AUP-2 are accepted by the parent after reading
+their actual diffs and rerunning the focused tests. AUP-3 is implemented and
+locally committed, pending parent review; AUP-4 to AUP-6 are not started.
+Nothing has been pushed, merged or installed, and no device validation has been
+run. Implementation evidence is in §10.
 
 Technical prose is English. In-app copy is Spanish, quoted exactly where it is
 authorized.
@@ -41,6 +40,7 @@ with its parent review and local work-unit commit; do not duplicate it.
       The parked `ActiveSummary` fixed Row/ellipsis large-text count issue is
       deferred to AUP-5.
 - [ ] **AUP-3** Full capture detail with explicit, truthful copy
+      — implemented in `a6e3573`; pending parent review
 - [ ] **AUP-4** Accurate today aggregate across the whole table
 - [ ] **AUP-5** Large text, touch targets, keyboard and contrast
 - [ ] **AUP-6** Compact local-first privacy; final visual/device validation
@@ -878,7 +878,7 @@ _Kept as history; current AUP-1 results are in §10._
 
 - **Loaded:** `/Users/erik/.agents/skills/work-unit-commits/SKILL.md` and
   `/Users/erik/.agents/skills/impeccable/reference/product.md` (preparation);
-  for AUP-1 and AUP-2 also
+  for AUP-1, AUP-2 and AUP-3 also
   `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/SKILL.md`
   and
   `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/writing-good-tests.md`
@@ -1023,3 +1023,82 @@ is included; below the 400 advisory.
 `ActiveSummary` fixed Row/ellipsis large-text count concern for AUP-5; it is not
 fixed in AUP-3. The branch still needs the deferred device matrix before any
 PASS.
+
+### AUP-3 — implemented, local commit only, pending parent review
+
+**TDD evidence (JUnit4 only, offline).** The pure clipboard payload builder
+`data/CaptureCopy.kt` was first written as a deliberately wrong stub that
+always returned `""`, after the real `CaptureCopyTest` compiled, so RED was
+behavioral rather than a compile error. Focused RED: 5 tests completed, 5 failed
+with `org.junit.ComparisonFailure` / `java.lang.AssertionError`:
+
+```
+CaptureCopyTest > longBodyKeepsInternalBlankLinesAndEdgeBreaksVerbatim FAILED
+    org.junit.ComparisonFailure at CaptureCopyTest.kt:34
+CaptureCopyTest > emptyTitleAndBodyProduceOnlyTheHeader FAILED
+    org.junit.ComparisonFailure at CaptureCopyTest.kt:40
+CaptureCopyTest > oneEmptySectionAddsNoPhantomSeparator FAILED
+    org.junit.ComparisonFailure at CaptureCopyTest.kt:45
+CaptureCopyTest > unicodeAccentsCurrencyAndEmojiArePreserved FAILED
+    java.lang.AssertionError at CaptureCopyTest.kt:56
+CaptureCopyTest > headerListsAppPackageAndTimestampOnce FAILED
+    java.lang.AssertionError at CaptureCopyTest.kt:72
+
+5 tests completed, 5 failed
+BUILD FAILED
+```
+
+Exact XML assertion messages include
+`expected:<[Banco Uno\nco.banco.uno\n09:41:07 28/11/2026\n\nAviso de pago\n\n\nPrimera línea con ñ y tildes…]> but was:<[]>`
+and `title must keep accents, currency and emoji`. GREEN after the minimal
+helper: focused `CaptureCopyTest` → `BUILD SUCCESSFUL`, 5/5 tests. Full
+verification after the UI, strings and README edits:
+`./gradlew --offline testDebugUnitTest assembleDebug --rerun-tasks` →
+`BUILD SUCCESSFUL`, 41/41 tasks executed, 22/22 tests (7 `NotificationTextTest`,
+3 `ListenerStatusTest`, 4 `ListenerConnectionTest`, 3
+`HistoryPresentationTest`, 5 `CaptureCopyTest`), 0 failures, 0 errors, 0
+skipped; no compiler warnings; `aapt dump permissions` lists no
+`android.permission.INTERNET`.
+
+**What shipped**
+- `data/CaptureCopy.kt`: pure payload builder. The header is the app label, the
+  package name and the timestamp joined by newlines; non-empty title and body
+  are separate sections separated by exactly one blank line; the body is
+  appended verbatim and its internal/edge line breaks are never trimmed,
+  squeezed or normalised.
+- `ui/CaptureDetail.kt`: full-height `verticalScroll` detail with
+  `SelectionContainer`; app label, package in `MonoBody`, and the full local
+  `HH:mm:ss dd/MM/yyyy` timestamp; no line caps on title or body; "Volver" text
+  action. "Copiar texto" calls `LocalClipboardManager.setText(AnnotatedString)`
+  only inside its `onClick`, shows the persistent clipboard caption and, after a
+  tap, "Texto copiado." with `LiveRegionMode.Polite`. No share intent, no send
+  action, no copy on open.
+- `ui/HistoryScreen.kt`: hoisted `rememberLazyListState()` retains list position
+  across detail open/close; `openCapture` is a plain `remember` (not saveable),
+  so leaving the tab disposes the hidden detail; `BackHandler` consumes system
+  back only while a detail is open; the card is clickable with the
+  `history_open_detail` label. The list card keeps `maxLines = 4`; clear-history
+  and its confirmation are unchanged. The detail opens regardless of permission,
+  connection or selection state.
+- `res/values/strings.xml`: `history_open_detail`, `capture_detail_back`,
+  `capture_detail_copy`, `capture_detail_copy_hint`, `capture_detail_copied`
+  with the authorized Spanish copy.
+- README: tap-to-open, full timestamp/package, scroll/selection, explicit copy
+  with the clipboard reminder, no share/auto-copy, and the 4-line preview.
+
+**Static evidence.** `maxLines = 4` appears exactly once (the list preview); no
+`ACTION_SEND`, `Intent.createChooser` or `startActivity` in
+`CaptureDetail.kt`; `BackHandler`, `capture_detail_copy_hint` and
+`SelectionContainer` are present; `clipboard.setText` appears only inside the
+Button `onClick`; the copied payload is the tested `captureCopyText` output.
+
+**Limits.** Navigation, scrolling, system back, the clipboard write and the
+live-region announcement are platform behaviors that the JUnit4-only classpath
+cannot automate; they remain deferred to the AUP-6 device matrix. List position
+retention is structural and reviewed, not automated. No device pass was run.
+Authored lines: **303** (297 additions + 6 deletions), inside the 300–340
+forecast and below the 400 advisory.
+
+**Commit:** `a6e3573` feat(android): add a full notification detail view
+(source, test, strings and README). A following docs commit records this
+evidence. Not accepted yet.
