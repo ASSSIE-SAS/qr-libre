@@ -74,7 +74,7 @@
     <string name="apps_empty">No se encontraron apps con pantalla de inicio.</string>
     <string name="apps_no_matches">Ninguna app coincide con la búsqueda.</string>
 
-    <string name="privacy_intro">Así funciona QR Libre con tus datos.</string>
+    <string name="privacy_intro">Tus avisos se quedan en este teléfono. Esto es lo que la app hace y lo que no.</string>
     <string name="privacy_reads_title">Qué lee</string>
     <string name="privacy_reads_body">Solo el título y el texto de las notificaciones de las apps que tú elijas. Ignora las demás.</string>
     <string name="privacy_stays_title">Dónde queda</string>

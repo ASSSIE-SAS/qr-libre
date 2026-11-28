@@ -53,8 +53,10 @@ payment was confirmed.
   focused and returns with the same tab and list state. Danger copy uses a
   dedicated token with at least 4.5:1 contrast on the dark surfaces, while the
   filled error color stays `#EB3131` for future error containers.
-- **Privacidad**: what it reads, where it stays, how to delete it, and what it
-  does not do.
+- **Privacidad**: local-first. The screen opens with where the data stays, then
+  reads, limits, deletion and the absence of an account, ads or tracking. The
+  sections are borderless and divided instead of repeated cards; it closes with
+  a one-line reminder that nothing leaves the phone and the project source.
 - **Leer en voz alta**: a `TextToSpeech` engine initialised by `MainActivity`
   speaks one fixed Spanish sentence. It is a manual sample shown only when
   capture is active; the app does not announce notifications automatically. A
@@ -151,6 +153,7 @@ android/
   app/src/test/java/co/asssie/qrlibre/ui/
     HistoryPresentationTest.kt first-run and voice visibility policy
     ContrastTest.kt         real palette contrast on the dark surfaces
+    PrivacySectionsTest.kt  privacy section order and bodies
   app/src/test/java/co/asssie/qrlibre/data/
     CaptureCopyTest.kt       verbatim clipboard payload
     DayWindowTest.kt         local-day boundaries and midnight delay
@@ -173,10 +176,10 @@ input.
 
 - No device or emulator was available while building this. The logic is
   covered by unit tests for `normalizeNotificationText`, the listener state, the
-  history visibility policy, the clipboard payload and the real palette
-  contrast; install, notification capture, detail navigation, font-scale
-  wrapping, IME behavior, touch targets and the clipboard are unverified on
-  hardware.
+  history visibility policy, the clipboard payload, the real palette contrast and
+  the privacy section order; install, notification capture, detail navigation,
+  font-scale wrapping, IME behavior, touch targets and the clipboard are
+  unverified on hardware so far.
 - A notification update posts again and can create a second row. There is no
   deduplication key yet.
 - The history screen loads the newest 500 rows. The table keeps the rest until
