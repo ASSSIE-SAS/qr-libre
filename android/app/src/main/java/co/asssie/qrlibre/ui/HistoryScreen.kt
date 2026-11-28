@@ -1,20 +1,31 @@
 package co.asssie.qrlibre.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -28,17 +39,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.asssie.qrlibre.R
 import co.asssie.qrlibre.data.Capture
 import co.asssie.qrlibre.data.CaptureEvents
 import co.asssie.qrlibre.data.CapturesDb
+import co.asssie.qrlibre.data.SelectedApps
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +70,7 @@ internal fun HistoryScreen(
     ttsMessage: String?,
     onSpeak: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
+    onOpenApps: () -> Unit,
 ) {
     val context = LocalContext.current
     val db = remember { CapturesDb.get(context) }
@@ -62,33 +81,47 @@ internal fun HistoryScreen(
     }
     val scope = rememberCoroutineScope()
     var confirmClear by remember { mutableStateOf(false) }
+    val selectedApps = remember { SelectedApps(context).selected().size }
+    val list = captures
+    val todayCount = remember(list) {
+        list.orEmpty().count { capture -> isToday(capture.epochMs) }
+    }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .animateContentSize(),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { PermissionCard(notificationAccess, onOpenNotificationSettings) }
-        item { VoiceCard(ttsReady, ttsMessage, onSpeak) }
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = stringResource(R.string.history_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f),
+                    text = stringResource(R.string.history_label_today),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (!captures.isNullOrEmpty()) {
-                    TextButton(onClick = { confirmClear = true }) {
-                        Text(stringResource(R.string.history_clear))
-                    }
-                }
+                Text(
+                    text = stringResource(R.string.history_headline),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
 
-        val list = captures
+        item {
+            HeroCard(
+                granted = notificationAccess,
+                todayCount = todayCount,
+                selectedApps = selectedApps,
+                onOpenNotificationSettings = onOpenNotificationSettings,
+            )
+        }
+
+        item {
+            VoiceTest(ready = ttsReady, message = ttsMessage, onSpeak = onSpeak)
+        }
+
         when {
             list == null -> item {
                 Box(
@@ -97,12 +130,27 @@ internal fun HistoryScreen(
                         .padding(vertical = 24.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
-            list.isEmpty() -> item { EmptyCard(stringResource(R.string.history_empty)) }
-            else -> items(list, key = { capture -> capture.id }) { capture ->
-                CaptureRow(capture)
+            list.isEmpty() -> item { EmptyHistory(onOpenApps = onOpenApps) }
+            else -> {
+                items(list, key = { capture -> capture.id }) { capture ->
+                    CaptureCard(capture = capture, modifier = Modifier.animateItem())
+                }
+                item {
+                    TextButton(
+                        onClick = { confirmClear = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
+                    ) {
+                        Text(stringResource(R.string.history_clear))
+                    }
+                }
             }
         }
     }
@@ -135,109 +183,208 @@ internal fun HistoryScreen(
 }
 
 @Composable
-private fun PermissionCard(granted: Boolean, onOpenSettings: () -> Unit) {
-    val colors = if (granted) {
-        CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
-    } else {
-        CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        )
+private fun HeroCard(
+    granted: Boolean,
+    todayCount: Int,
+    selectedApps: Int,
+    onOpenNotificationSettings: () -> Unit,
+) {
+    if (!granted) {
+        Card(
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.permission_missing_headline),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    text = stringResource(R.string.permission_missing),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Button(
+                    onClick = onOpenNotificationSettings,
+                    modifier = Modifier.padding(top = 6.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.onPrimary,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                    ),
+                ) {
+                    Text(stringResource(R.string.permission_grant_action))
+                }
+            }
+        }
+        return
     }
 
-    Card(colors = colors) {
+    Card(
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 22.dp, vertical = 24.dp),
         ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.hero_listening),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Spacer(Modifier.height(10.dp))
             Text(
-                text = stringResource(R.string.permission_title),
-                style = MaterialTheme.typography.titleMedium,
+                text = todayCount.toString(),
+                style = MaterialTheme.typography.displayLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = stringResource(
-                    if (granted) R.string.permission_granted else R.string.permission_missing,
-                ),
+                text = stringResource(R.string.hero_captured_suffix),
                 style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (granted) {
-                OutlinedButton(onClick = onOpenSettings) {
-                    Text(stringResource(R.string.permission_review_settings))
-                }
+            Spacer(Modifier.height(16.dp))
+            if (selectedApps > 0) {
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.hero_apps_count,
+                        selectedApps,
+                        selectedApps,
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             } else {
                 Text(
-                    text = stringResource(R.string.permission_explanation),
-                    style = MaterialTheme.typography.bodySmall,
+                    text = stringResource(R.string.hero_no_apps),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.tertiary,
                 )
-                Text(
-                    text = stringResource(R.string.permission_steps),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Button(onClick = onOpenSettings) {
-                    Text(stringResource(R.string.permission_open_settings))
-                }
             }
         }
     }
 }
 
 @Composable
-private fun VoiceCard(ready: Boolean, message: String?, onSpeak: () -> Unit) {
-    Card {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+private fun VoiceTest(ready: Boolean, message: String?, onSpeak: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(
+            onClick = onSpeak,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.primary,
+            ),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
         ) {
             Text(
-                text = stringResource(R.string.voice_title),
-                style = MaterialTheme.typography.titleMedium,
+                text = stringResource(R.string.voice_test),
+                style = MaterialTheme.typography.labelLarge,
             )
+        }
+        if (message != null) {
             Text(
-                text = stringResource(
-                    if (ready) R.string.voice_ready else R.string.voice_explanation,
-                ),
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        } else if (!ready) {
+            Text(
+                text = stringResource(R.string.voice_explanation),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (message != null) {
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            OutlinedButton(onClick = onSpeak) {
-                Text(stringResource(R.string.voice_action))
-            }
         }
     }
 }
 
 @Composable
-private fun CaptureRow(capture: Capture) {
-    Card {
+private fun EmptyHistory(onOpenApps: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_bell),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Text(
+            text = stringResource(R.string.history_empty_title),
+            style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, lineHeight = 26.sp),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Text(
+            text = stringResource(R.string.history_empty),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.widthIn(max = 300.dp),
+        )
+        TextButton(onClick = onOpenApps) {
+            Text(stringResource(R.string.history_choose_apps))
+        }
+    }
+}
+
+@Composable
+private fun CaptureCard(capture: Capture, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = capture.app,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
+                Spacer(Modifier.width(12.dp))
                 Text(
                     text = formatTimestamp(capture.epochMs),
                     style = MaterialTheme.typography.labelSmall,
@@ -247,18 +394,29 @@ private fun CaptureRow(capture: Capture) {
             if (capture.title.isNotEmpty()) {
                 Text(
                     text = capture.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             if (capture.body.isNotEmpty()) {
                 Text(
                     text = capture.body,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MonoBody,
+                    color = QrLibreColors.LimeText,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
     }
+}
+
+private fun isToday(epochMs: Long): Boolean {
+    val now = Calendar.getInstance()
+    val then = Calendar.getInstance().apply { timeInMillis = epochMs }
+    return now.get(Calendar.YEAR) == then.get(Calendar.YEAR) &&
+        now.get(Calendar.DAY_OF_YEAR) == then.get(Calendar.DAY_OF_YEAR)
 }
 
 private fun formatTimestamp(epochMs: Long): String =

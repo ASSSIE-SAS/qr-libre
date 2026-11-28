@@ -9,19 +9,28 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,12 +41,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
@@ -71,16 +84,17 @@ internal fun AppsScreen() {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 12.dp),
+                .padding(start = 20.dp, end = 20.dp, top = 16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(
-                text = stringResource(R.string.apps_explanation),
-                style = MaterialTheme.typography.bodyMedium,
+                text = stringResource(R.string.apps_headline),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = stringResource(R.string.apps_selected_count, selected.size),
-                style = MaterialTheme.typography.labelMedium,
+                text = stringResource(R.string.apps_explanation),
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -93,7 +107,7 @@ internal fun AppsScreen() {
                     .weight(1f),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
 
             loaded.isEmpty() -> Box(
@@ -108,14 +122,9 @@ internal fun AppsScreen() {
 
             else -> {
                 if (loaded.size > SEARCH_THRESHOLD) {
-                    OutlinedTextField(
-                        value = query,
-                        onValueChange = { query = it },
-                        label = { Text(stringResource(R.string.apps_search)) },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 20.dp, end = 20.dp, top = 12.dp),
+                    SearchField(
+                        query = query,
+                        onQueryChange = { query = it },
                     )
                 }
                 val filtered = remember(loaded, query) {
@@ -140,17 +149,16 @@ internal fun AppsScreen() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        contentPadding = PaddingValues(
-                            start = 20.dp,
-                            end = 20.dp,
-                            top = 8.dp,
-                            bottom = 24.dp,
-                        ),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 4.dp),
                     ) {
-                        items(filtered, key = { app -> app.packageName }) { app ->
+                        itemsIndexed(
+                            items = filtered,
+                            key = { _, app -> app.packageName },
+                        ) { index, app ->
                             AppRow(
                                 app = app,
                                 checked = selected.contains(app.packageName),
+                                showDivider = index < filtered.lastIndex,
                                 onCheckedChange = { checked ->
                                     selected = preferences.setSelected(app.packageName, checked)
                                 },
@@ -158,69 +166,151 @@ internal fun AppsScreen() {
                         }
                     }
                 }
+                SelectionSummary(count = selected.size)
             }
         }
     }
 }
 
 @Composable
+private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+    TextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, top = 14.dp),
+        placeholder = {
+            Text(
+                text = stringResource(R.string.apps_search),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        leadingIcon = {
+            Icon(
+                painter = painterResource(R.drawable.ic_search),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+        },
+        singleLine = true,
+        shape = CircleShape,
+        textStyle = MaterialTheme.typography.bodyMedium,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            disabledContainerColor = MaterialTheme.colorScheme.surface,
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent,
+            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+    )
+}
+
+@Composable
 private fun AppRow(
     app: AppEntry,
     checked: Boolean,
+    showDivider: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .toggleable(
-                value = checked,
-                role = Role.Checkbox,
-                onValueChange = onCheckedChange,
-            )
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        if (app.icon != null) {
-            Image(
-                bitmap = app.icon,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp)),
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = app.label.take(1).uppercase(Locale.getDefault()),
-                    style = MaterialTheme.typography.labelMedium,
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .toggleable(
+                    value = checked,
+                    role = Role.Switch,
+                    onValueChange = onCheckedChange,
                 )
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (app.icon != null) {
+                Image(
+                    bitmap = app.icon,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = app.label.take(1).uppercase(Locale.getDefault()),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-        }
-        Column(modifier = Modifier.weight(1f)) {
+            Spacer(Modifier.width(12.dp))
             Text(
                 text = app.label,
                 style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
-            Text(
-                text = app.packageName,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            Spacer(Modifier.width(8.dp))
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    checkedBorderColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    uncheckedTrackColor = QrLibreColors.SwitchOff,
+                    uncheckedBorderColor = QrLibreColors.SwitchOff,
+                ),
             )
         }
-        Checkbox(checked = checked, onCheckedChange = null)
+        if (showDivider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SelectionSummary(count: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Text(
+                text = pluralStringResource(R.plurals.apps_selected_summary, count, count),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+            )
+        }
     }
 }
 
