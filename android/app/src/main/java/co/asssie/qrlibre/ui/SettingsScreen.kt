@@ -40,8 +40,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.asssie.qrlibre.R
 import co.asssie.qrlibre.data.Capture
 import co.asssie.qrlibre.data.CaptureEvents
+import co.asssie.qrlibre.data.PairingStore
 import co.asssie.qrlibre.data.exportCaptures
 import co.asssie.qrlibre.data.exportFileName
+import co.asssie.qrlibre.pairing.pairingSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,6 +55,7 @@ internal fun SettingsScreen(
     ttsMessage: String?,
     onSpeak: () -> Unit,
     onOpenApps: () -> Unit,
+    onOpenPairing: () -> Unit,
     onOpenPrivacy: () -> Unit,
     onBack: () -> Unit,
     loadCaptures: suspend () -> List<Capture>,
@@ -60,6 +63,12 @@ internal fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val version by CaptureEvents.version.collectAsStateWithLifecycle()
+    // Read on entry, so returning from Emparejamiento shows the current role
+    // and peer. Leaving Settings drops this state with the composition.
+    val pairing = remember {
+        val store = PairingStore(context)
+        pairingSummary(store.role(), store.peer())
+    }
     // Read on entry and whenever the table changes, so the action never offers
     // a stale list. Leaving Settings drops this state with the composition.
     var captures by remember { mutableStateOf<List<Capture>?>(null) }
@@ -129,6 +138,12 @@ internal fun SettingsScreen(
                     selectedApps,
                 ),
                 onClick = onOpenApps,
+            )
+            SettingsDivider()
+            SettingsRow(
+                title = stringResource(R.string.pairing_title),
+                detail = pairingSettingsDetail(pairing),
+                onClick = onOpenPairing,
             )
             SettingsDivider()
             SettingsRow(

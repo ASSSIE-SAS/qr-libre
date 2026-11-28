@@ -35,6 +35,31 @@
     <string name="settings_export_done">Exportado.</string>
     <string name="settings_export_failed">No se pudo exportar. Intenta de nuevo.</string>
 
+    <string name="pairing_title">Emparejamiento</string>
+    <string name="pairing_intro">Dos teléfonos en el mismo local: uno captura los avisos y el otro suena. La conexión Bluetooth llegará en la próxima versión.</string>
+    <string name="pairing_role_question">¿Qué hace este teléfono?</string>
+    <string name="pairing_role_capture_title">Este teléfono captura</string>
+    <string name="pairing_role_capture_body">Guarda los avisos de las apps que elijas y los manda al teléfono que suena.</string>
+    <string name="pairing_role_speaker_title">Este teléfono suena</string>
+    <string name="pairing_role_speaker_body">Se queda en el local y avisa en voz alta lo que llegue.</string>
+    <string name="pairing_role_change_note">Cambiar de rol desempareja el teléfono.</string>
+
+    <string name="pairing_status_capture_unpaired">Sin emparejar. Muestra este código al teléfono que suena.</string>
+    <string name="pairing_status_capture_paired">Emparejado con %1$s.</string>
+    <string name="pairing_status_speaker_unpaired">Sin emparejar. Escanea el código del teléfono que captura.</string>
+    <string name="pairing_status_speaker_paired">Emparejado con %1$s.</string>
+    <string name="pairing_settings_capture_unpaired">Este teléfono captura. Sin emparejar.</string>
+    <string name="pairing_settings_capture_paired">Captura hacia %1$s.</string>
+    <string name="pairing_settings_speaker_unpaired">Este teléfono suena. Sin emparejar.</string>
+    <string name="pairing_settings_speaker_paired">Suena con %1$s.</string>
+
+    <string name="pairing_qr_label">Código QR de emparejamiento</string>
+    <string name="pairing_qr_name">Nombre en el código: %1$s</string>
+    <string name="pairing_qr_hint">El otro teléfono lo escanea una vez. El código solo se muestra en esta pantalla y no se envía a ningún servidor.</string>
+    <string name="pairing_scan">Escanear QR</string>
+    <string name="pairing_scan_next_version">Disponible en la próxima versión</string>
+    <string name="pairing_unpair">Desemparejar</string>
+
     <string name="apps_headline">Apps que quieres registrar</string>
     <plurals name="apps_selected_summary">
         <item quantity="one">%1$d app seleccionada</item>

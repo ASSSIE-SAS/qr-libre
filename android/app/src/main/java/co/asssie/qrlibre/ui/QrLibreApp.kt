@@ -121,6 +121,7 @@ fun QrLibreApp(
                         ttsMessage = ttsMessage,
                         onSpeak = onSpeak,
                         onOpenApps = { dest = Dest.APPS },
+                        onOpenPairing = { dest = Dest.PAIRING },
                         onOpenPrivacy = { dest = Dest.PRIVACY },
                         onBack = { backDestination(Dest.SETTINGS)?.let { dest = it } },
                         loadCaptures = {
@@ -128,6 +129,10 @@ fun QrLibreApp(
                                 CapturesDb.get(context).recentCaptures()
                             }
                         },
+                    )
+
+                    Dest.PAIRING -> PairingScreen(
+                        onBack = { backDestination(Dest.PAIRING)?.let { dest = it } },
                     )
 
                     Dest.APPS -> AppsScreen(

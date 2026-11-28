@@ -34,6 +34,15 @@ class DestTest {
     }
 
     @Test
+    fun backFromPairingReturnsToSettings() {
+        assertEquals(
+            "pairing is reached from Settings, so back returns there instead of jumping home",
+            Dest.SETTINGS,
+            backDestination(Dest.PAIRING),
+        )
+    }
+
+    @Test
     fun gearFromHistoryOpensSettings() {
         assertEquals(
             "the gear in the history header opens Settings",
