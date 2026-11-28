@@ -1524,3 +1524,35 @@ local-first (source, test, strings and README). Detailed RED/GREEN output and
 screenshot paths are in the local, git-ignored
 `odd/tasks/android-ux-polish-aup6-report.md`. Accepted in code review by the
 parent; extended device validation remains pending.
+
+---
+
+## Runtime acceptance (authorized device pass)
+
+Device `ace242eb` (POCO F3, Android 13, 2400x1080), branch head `6c0d948`,
+font scale restored to 1.0. Full report:
+`/private/var/folders/ff/hrsxp6x120z072qb2t7ccxq40000gp/T/opencode/qr-ux-device-acceptance.md`
+(31 screenshots beside it; temporary proof workspace only).
+
+| Check | Result |
+| --- | --- |
+| Font 100% and 200%, all three tabs, scroll, long labels, bottom nav, short-landscape search with IME | PASS |
+| Listener states: no permission → "Dar acceso"; no apps → "Elegir apps"; selected app → "Conectando…" then "Escuchando"; unset → "Elegir apps" | PASS (MIUI needed a listener re-toggle to rebind; the UI stayed truthful) |
+| Synthetic notice → History → full uncapped detail → system Back → explicit copy → clipboard read → clear dialog cancelled | PASS (470-char body preserved; 553-char copy contained only synthetic text) |
+| Production `CapturesDb` `COUNT` on an isolated database | PASS (601 in-day rows vs 500-row list; start inclusive, end exclusive; real `qr_libre.db` unchanged) |
+| Live midnight/time-zone rollover, TalkBack | NOT EXECUTED (out of approved scope); covered structurally and by unit tests only |
+| No `INTERNET` permission, no new dependencies, `DB_VERSION` unchanged | CONFIRMED |
+
+**Restoration.** Font scale 1.0, rotation/accelerometer originals, QR Libre
+listener enabled with the two other listeners preserved, selection back to its
+original package (`shared_prefs` SHA identical), real history 0 rows with
+`PRAGMA integrity_check=ok`, no harness package installed, repository clean.
+
+**Known side effect.** The authorized copy test overwrote the device clipboard
+and MIUI provides no supported way to clear it, so it still holds the
+synthetic text. No private content was read or placed there.
+
+**Still open (not a defect, not a PASS).** Live midnight/time-zone rollover,
+TalkBack reading order, and a human eyeball on the 200% screenshots. A MIUI
+rebind quirk after `cmd notification allow_listener` is environmental, not
+app-side.
