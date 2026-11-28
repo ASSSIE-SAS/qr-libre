@@ -54,6 +54,39 @@ fun pairingSummary(role: DeviceRole, peer: PairedPeer?): PairingSummary {
 }
 
 /**
+ * The peer this emitter records when the first speaker connects, or null when
+ * a peer is already stored.
+ *
+ * The QR flow only teaches the receiver the secret: whoever scans the code can
+ * sign its requests with it, so the first device that reaches the capture
+ * service is authorized by that fact alone. Recording it lets the pairing
+ * screen name the speaker and offer "Desemparejar"; it grants no extra trust
+ * beyond the secret the scanner already holds.
+ *
+ * A stored peer is never replaced: [existing] wins and the result is null, so
+ * a later connection can only be ignored, never silently promoted. [remoteName]
+ * is trimmed and must be non-empty, otherwise [FALLBACK_PEER_NAME] is used.
+ * The secret and the service UUID are the emitter's own and pass through
+ * verbatim, encoded exactly as the QR writes them.
+ */
+fun peerOnFirstConnection(
+    existing: PairedPeer?,
+    remoteName: String?,
+    localSecretBase64Url: String,
+    serviceUuid: String,
+): PairedPeer? {
+    if (existing != null) return null
+    return PairedPeer(
+        name = remoteName?.trim()?.takeIf { it.isNotEmpty() } ?: FALLBACK_PEER_NAME,
+        secretBase64Url = localSecretBase64Url,
+        serviceUuid = serviceUuid,
+    )
+}
+
+/** Shown when a connection carries no usable device name. */
+private const val FALLBACK_PEER_NAME = "Dispositivo"
+
+/**
  * The scanner ships in P4 together with the camera permission. Only the
  * speaker role scans, so this version answers false for both roles and the
  * button stays visible but disabled. P4 returns `role == DeviceRole.SPEAKER`.

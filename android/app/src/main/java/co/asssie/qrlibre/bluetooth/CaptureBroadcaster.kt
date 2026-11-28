@@ -24,6 +24,8 @@ import android.util.Log
 import co.asssie.qrlibre.data.DeviceRole
 import co.asssie.qrlibre.data.PairingStore
 import co.asssie.qrlibre.pairing.CaptureMessage
+import co.asssie.qrlibre.pairing.encodeBase64Url
+import co.asssie.qrlibre.pairing.peerOnFirstConnection
 import co.asssie.qrlibre.pairing.shouldAdvertise
 import co.asssie.qrlibre.pairing.shouldSend
 import co.asssie.qrlibre.pairing.signedFrame
@@ -197,6 +199,7 @@ class CaptureBroadcaster private constructor(context: Context) {
                             // One peer per emitter: stop looking once someone
                             // is attached, and reopen the door on disconnect.
                             stopAdvertisingLocked()
+                            recordFirstPeerLocked(device)
                             debug("peer connected")
                         }
 
@@ -316,6 +319,34 @@ class CaptureBroadcaster private constructor(context: Context) {
         characteristic = captureCharacteristic
         advertisedUuid = serviceUuid
         debug("GATT service ready")
+    }
+
+    /**
+     * Records the first speaker that connects, so the pairing screen can name
+     * it and "Desemparejar" has something to forget.
+     *
+     * The scanner already holds the pairing secret and every frame is signed
+     * with it, so reaching the service is the authorization; this only keeps
+     * the persisted peer in step with the live link. An existing peer is never
+     * replaced, and neither the remote name nor the secret reaches the log.
+     */
+    private fun recordFirstPeerLocked(device: BluetoothDevice?) {
+        try {
+            if (device == null) return
+            if (store.role() != DeviceRole.CAPTURE) return
+            val payload = store.localPayload() ?: return
+            val peer = peerOnFirstConnection(
+                existing = store.peer(),
+                remoteName = device.name,
+                localSecretBase64Url = encodeBase64Url(payload.secret),
+                serviceUuid = payload.serviceUuid,
+            ) ?: return
+            store.savePeer(peer)
+            debug("first peer recorded")
+        } catch (error: Exception) {
+            // A missing permission or an unreadable name must not break the link.
+            debug("peer record failed: ${error.javaClass.simpleName}")
+        }
     }
 
     private fun startAdvertisingLocked(serviceUuid: String) {

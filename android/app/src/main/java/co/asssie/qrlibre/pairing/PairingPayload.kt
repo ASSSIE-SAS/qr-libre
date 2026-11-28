@@ -53,8 +53,8 @@ data class PairingPayload(
  * a second colon. The UUID is written verbatim.
  */
 fun PairingPayload.encode(): String =
-    "$PREFIX:$version:${b64url(deviceName.toByteArray(Charsets.UTF_8))}:" +
-        "${b64url(secret)}:$serviceUuid"
+    "$PREFIX:$version:${encodeBase64Url(deviceName.toByteArray(Charsets.UTF_8))}:" +
+        "${encodeBase64Url(secret)}:$serviceUuid"
 
 /**
  * Parses a scanned payload, or null for anything invalid.
@@ -122,7 +122,13 @@ fun randomPairingSecret(): ByteArray =
 
 private val RANDOM = SecureRandom()
 
-private fun b64url(bytes: ByteArray): String =
+/**
+ * The secret as base64url without padding, the form the QR and the store use.
+ *
+ * Kept shared so the emitter can record its own key on the first connection
+ * without minting a second encoder; never log the result.
+ */
+internal fun encodeBase64Url(bytes: ByteArray): String =
     Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
 
 private fun decodeBase64Url(text: String): ByteArray? =

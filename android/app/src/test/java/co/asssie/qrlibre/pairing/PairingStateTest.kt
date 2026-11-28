@@ -107,4 +107,62 @@ class PairingStateTest {
             )
         }
     }
+
+    @Test
+    fun anExistingPeerIsNeverReplacedByAConnection() {
+        assertNull(
+            "a second device must not overwrite the speaker already paired",
+            peerOnFirstConnection(
+                existing = peer,
+                remoteName = "Otra barra",
+                localSecretBase64Url = "AAECAwQFBgcICQoLDA0ODw",
+                serviceUuid = "6f1d3c2a-6d1b-4c54-9d1a-1f0e2c3b4a59",
+            ),
+        )
+    }
+
+    @Test
+    fun theFirstConnectionRecordsTheTrimmedRemoteName() {
+        val recorded = peerOnFirstConnection(
+            existing = null,
+            remoteName = "  Barra  ",
+            localSecretBase64Url = "AAECAwQFBgcICQoLDA0ODw",
+            serviceUuid = "6f1d3c2a-6d1b-4c54-9d1a-1f0e2c3b4a59",
+        )
+
+        assertEquals("Barra", recorded?.name)
+    }
+
+    @Test
+    fun aMissingOrBlankRemoteNameFallsBackToTheGenericLabel() {
+        for (name in listOf(null, "", " ", "\t\n ")) {
+            val recorded = peerOnFirstConnection(
+                existing = null,
+                remoteName = name,
+                localSecretBase64Url = "AAECAwQFBgcICQoLDA0ODw",
+                serviceUuid = "6f1d3c2a-6d1b-4c54-9d1a-1f0e2c3b4a59",
+            )
+
+            assertEquals("Dispositivo", recorded?.name)
+        }
+    }
+
+    @Test
+    fun theRecordedPeerKeepsTheLocalSecretAndUuidVerbatim() {
+        val recorded = peerOnFirstConnection(
+            existing = null,
+            remoteName = "Barra",
+            localSecretBase64Url = "AAECAwQFBgcICQoLDA0ODw",
+            serviceUuid = "6f1d3c2a-6d1b-4c54-9d1a-1f0e2c3b4a59",
+        )
+
+        assertEquals(
+            PairedPeer(
+                name = "Barra",
+                secretBase64Url = "AAECAwQFBgcICQoLDA0ODw",
+                serviceUuid = "6f1d3c2a-6d1b-4c54-9d1a-1f0e2c3b4a59",
+            ),
+            recorded,
+        )
+    }
 }
