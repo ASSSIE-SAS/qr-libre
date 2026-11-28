@@ -1,7 +1,10 @@
 package co.asssie.qrlibre.ui
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,6 +33,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +47,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import co.asssie.qrlibre.R
+import co.asssie.qrlibre.bluetooth.CaptureBroadcaster
+import co.asssie.qrlibre.bluetooth.bluetoothSendPermissions
+import co.asssie.qrlibre.bluetooth.hasBluetoothSendPermissions
 import co.asssie.qrlibre.data.DeviceRole
 import co.asssie.qrlibre.data.PairingStore
 import co.asssie.qrlibre.pairing.PairingPayload
@@ -62,6 +69,17 @@ internal fun PairingScreen(onBack: () -> Unit) {
     var role by remember { mutableStateOf(store.role()) }
     var peer by remember { mutableStateOf(store.peer()) }
     val summary = pairingSummary(role, peer)
+    // Android 12+ asks for Bluetooth at runtime. Capture still works without
+    // it; only the forward to the speaker stays off.
+    var bluetoothGranted by remember { mutableStateOf(hasBluetoothSendPermissions(context)) }
+    val bluetoothPermissions = bluetoothSendPermissions
+    val requestBluetooth = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        bluetoothGranted = hasBluetoothSendPermissions(context)
+        reconcileBluetooth(context)
+    }
+    LaunchedEffect(role, bluetoothGranted) { reconcileBluetooth(context) }
 
     // Minted once per capture role and persisted by the store, so a rotation,
     // a recomposition or a role round-trip reuses the same secret. The speaker
@@ -108,6 +126,7 @@ internal fun PairingScreen(onBack: () -> Unit) {
                         store.setRole(DeviceRole.CAPTURE)
                         // A role change forgets a peer made for the other direction.
                         peer = store.peer()
+                        reconcileBluetooth(context)
                     }
                 },
             )
@@ -121,6 +140,7 @@ internal fun PairingScreen(onBack: () -> Unit) {
                         role = DeviceRole.SPEAKER
                         store.setRole(DeviceRole.SPEAKER)
                         peer = store.peer()
+                        reconcileBluetooth(context)
                     }
                 },
             )
@@ -136,7 +156,17 @@ internal fun PairingScreen(onBack: () -> Unit) {
                 peer = null
             }
             when (role) {
-                DeviceRole.CAPTURE -> CaptureSection(payload, summary, onUnpair)
+                DeviceRole.CAPTURE -> CaptureSection(
+                    payload = payload,
+                    summary = summary,
+                    onUnpair = onUnpair,
+                    bluetoothNeedsPermission =
+                        bluetoothPermissions.isNotEmpty() && !bluetoothGranted,
+                    onRequestBluetooth = {
+                        requestBluetooth.launch(bluetoothPermissions.toTypedArray())
+                    },
+                )
+
                 DeviceRole.SPEAKER -> SpeakerSection(summary, onUnpair)
             }
         }
@@ -216,11 +246,17 @@ private fun CaptureSection(
     payload: PairingPayload?,
     summary: PairingSummary,
     onUnpair: () -> Unit,
+    bluetoothNeedsPermission: Boolean,
+    onRequestBluetooth: () -> Unit,
 ) {
     PairingStatusLine(summary)
     if (summary.canUnpair) {
         Spacer(Modifier.height(10.dp))
         UnpairButton(onUnpair)
+    }
+    if (bluetoothNeedsPermission) {
+        Spacer(Modifier.height(12.dp))
+        BluetoothPermissionCard(onRequestBluetooth)
     }
     if (payload == null) return
 
@@ -311,6 +347,55 @@ private fun UnpairButton(onClick: () -> Unit) {
             text = stringResource(R.string.pairing_unpair),
             style = MaterialTheme.typography.labelLarge,
         )
+    }
+}
+
+/**
+ * Plain explanation plus the system request. The permission is not needed to
+ * keep capturing; it only turns on the sender, so the copy says so.
+ */
+@Composable
+private fun BluetoothPermissionCard(onRequestBluetooth: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.pairing_bluetooth_permission_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.pairing_bluetooth_permission_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(
+                onClick = onRequestBluetooth,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.pairing_bluetooth_permission_action),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
+    }
+}
+
+private fun reconcileBluetooth(context: Context) {
+    try {
+        CaptureBroadcaster.get(context).start()
+    } catch (_: Exception) {
+        // Bluetooth is optional: the capture path never depends on it.
     }
 }
 

@@ -43,7 +43,11 @@ fun exportFileName(nowMs: Long): String {
 private fun jsonVerdict(verdict: Verdict?): String =
     if (verdict == null) "null" else jsonString(verdict.wire)
 
-private fun jsonString(value: String): String {
+/**
+ * Escapes [value] as a JSON string literal. Shared with the pairing capture
+ * frame so both wire formats escape identically.
+ */
+internal fun jsonString(value: String): String {
     val out = StringBuilder(value.length + 2)
     out.append('"')
     for (ch in value) {

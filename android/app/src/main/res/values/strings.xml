@@ -36,7 +36,7 @@
     <string name="settings_export_failed">No se pudo exportar. Intenta de nuevo.</string>
 
     <string name="pairing_title">Emparejamiento</string>
-    <string name="pairing_intro">Dos teléfonos en el mismo local: uno captura los avisos y el otro suena. La conexión Bluetooth llegará en la próxima versión.</string>
+    <string name="pairing_intro">Dos teléfonos en el mismo local: uno captura los avisos y el otro suena.</string>
     <string name="pairing_role_question">¿Qué hace este teléfono?</string>
     <string name="pairing_role_capture_title">Este teléfono captura</string>
     <string name="pairing_role_capture_body">Guarda los avisos de las apps que elijas y los manda al teléfono que suena.</string>
@@ -52,6 +52,10 @@
     <string name="pairing_settings_capture_paired">Captura hacia %1$s.</string>
     <string name="pairing_settings_speaker_unpaired">Este teléfono suena. Sin emparejar.</string>
     <string name="pairing_settings_speaker_paired">Suena con %1$s.</string>
+
+    <string name="pairing_bluetooth_permission_title">Permiso de Bluetooth</string>
+    <string name="pairing_bluetooth_permission_body">Para enviar los avisos al teléfono que suena, QR Libre necesita anunciarse y conectarse por Bluetooth. Sin este permiso los avisos se siguen guardando aquí; solo se dejan de enviar.</string>
+    <string name="pairing_bluetooth_permission_action">Permitir Bluetooth</string>
 
     <string name="pairing_qr_label">Código QR de emparejamiento</string>
     <string name="pairing_qr_name">Nombre en el código: %1$s</string>

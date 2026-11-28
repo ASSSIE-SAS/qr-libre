@@ -6,6 +6,21 @@
       notifications on the device only.
     -->
 
+    <!--
+      The capture role announces a GATT service and sends signed frames to the
+      paired speaker. Android 12+ splits Bluetooth into runtime permissions;
+      older releases keep the install-time pair. Neither grants network access.
+      No BLUETOOTH_SCAN: this role never scans.
+    -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
     <!-- Needed on Android 11+ to list apps that have a launcher screen. -->
     <queries>
         <intent>
