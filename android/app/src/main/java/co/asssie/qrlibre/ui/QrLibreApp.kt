@@ -30,9 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import co.asssie.qrlibre.data.CapturesDb
 import co.asssie.qrlibre.data.SelectedApps
 import co.asssie.qrlibre.data.SelectionEvents
 import co.asssie.qrlibre.notifications.resolveListenerUiState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun QrLibreApp(
@@ -120,6 +123,11 @@ fun QrLibreApp(
                         onOpenApps = { dest = Dest.APPS },
                         onOpenPrivacy = { dest = Dest.PRIVACY },
                         onBack = { backDestination(Dest.SETTINGS)?.let { dest = it } },
+                        loadCaptures = {
+                            withContext(Dispatchers.IO) {
+                                CapturesDb.get(context).recentCaptures()
+                            }
+                        },
                     )
 
                     Dest.APPS -> AppsScreen(
