@@ -342,6 +342,15 @@ private fun CaptureSection(
             onRequestBluetooth = onRequestBluetooth,
         )
     }
+    // One peer is the limit: a given code has nothing left to claim, so the QR
+    // only appears while this phone is unpaired.
+    if (!summary.showsQr) {
+        if (summary.paired) {
+            Spacer(Modifier.height(12.dp))
+            AlreadyPairedLine(summary.peerName)
+        }
+        return
+    }
     if (payload == null) return
 
     val qr = remember(payload) { pairingQrImage(payload.encode()) }
@@ -402,38 +411,45 @@ private fun SpeakerSection(
     }
     Spacer(Modifier.height(12.dp))
     SpeakerLinkLine(receiverState.connection)
-    Spacer(Modifier.height(10.dp))
-    Button(
-        onClick = onScan,
-        enabled = summary.scanEnabled,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    // One peer is the limit: once this phone is paired there is nothing left to
+    // scan, so the action and its guidance only appear while unpaired.
+    if (summary.showsScanAction) {
+        Spacer(Modifier.height(10.dp))
+        Button(
+            onClick = onScan,
+            enabled = summary.scanEnabled,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = stringResource(R.string.pairing_scan),
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
         Text(
-            text = stringResource(R.string.pairing_scan),
-            style = MaterialTheme.typography.labelLarge,
-        )
-    }
-    Text(
-        text = stringResource(R.string.pairing_scan_hint),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 6.dp),
-    )
-    if (scanError) {
-        Text(
-            text = stringResource(R.string.pairing_scan_invalid),
+            text = stringResource(R.string.pairing_scan_hint),
             style = MaterialTheme.typography.bodySmall,
-            color = QrLibreColors.DangerText,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 6.dp),
         )
-    }
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-        Text(
-            text = stringResource(R.string.pairing_speaker_android_11),
-            style = MaterialTheme.typography.bodySmall,
-            color = QrLibreColors.DangerText,
-            modifier = Modifier.padding(top = 6.dp),
-        )
+        if (scanError) {
+            Text(
+                text = stringResource(R.string.pairing_scan_invalid),
+                style = MaterialTheme.typography.bodySmall,
+                color = QrLibreColors.DangerText,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            Text(
+                text = stringResource(R.string.pairing_speaker_android_11),
+                style = MaterialTheme.typography.bodySmall,
+                color = QrLibreColors.DangerText,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    } else if (summary.paired) {
+        Spacer(Modifier.height(10.dp))
+        AlreadyPairedLine(summary.peerName)
     }
     if (summary.paired) {
         Spacer(Modifier.height(16.dp))
@@ -557,6 +573,16 @@ private fun PairingStatusLine(summary: PairingSummary) {
         } else {
             MaterialTheme.colorScheme.onSurfaceVariant
         },
+    )
+}
+
+/** One muted line in place of the QR or the scan action once a peer is stored. */
+@Composable
+private fun AlreadyPairedLine(peerName: String?) {
+    Text(
+        text = stringResource(R.string.pairing_already_paired, peerName.orEmpty()),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 

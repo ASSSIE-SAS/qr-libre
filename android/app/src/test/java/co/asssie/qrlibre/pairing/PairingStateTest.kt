@@ -37,7 +37,7 @@ class PairingStateTest {
         assertEquals("Barra", summary.peerName)
         assertTrue(summary.paired)
         assertTrue(summary.canUnpair)
-        assertTrue("the QR stays available to pair another speaker", summary.showsQr)
+        assertFalse("one peer is the limit, so the QR goes away", summary.showsQr)
         assertFalse(summary.showsScanAction)
     }
 
@@ -69,8 +69,68 @@ class PairingStateTest {
         assertTrue(summary.paired)
         assertTrue(summary.canUnpair)
         assertFalse(summary.showsQr)
-        assertTrue(summary.showsScanAction)
+        assertFalse("one peer is the limit, so the scan button goes away", summary.showsScanAction)
         assertTrue(summary.scanEnabled)
+    }
+
+    @Test
+    fun onlyAnUnpairedCapturePhoneShowsThePairingQr() {
+        assertTrue(
+            "the unpaired capture phone is the one that displays the code",
+            showsPairingQr(DeviceRole.CAPTURE, peer = null),
+        )
+        assertFalse(
+            "a paired capture phone hides the code until it is unpaired",
+            showsPairingQr(DeviceRole.CAPTURE, peer),
+        )
+        assertFalse(
+            "the speaker never displays the code",
+            showsPairingQr(DeviceRole.SPEAKER, peer = null),
+        )
+        assertFalse(
+            "the speaker never displays the code, paired or not",
+            showsPairingQr(DeviceRole.SPEAKER, peer),
+        )
+    }
+
+    @Test
+    fun onlyAnUnpairedSpeakerOffersTheScanAction() {
+        assertTrue(
+            "the unpaired speaker is the one that scans",
+            canScanForPairing(DeviceRole.SPEAKER, peer = null),
+        )
+        assertFalse(
+            "a paired speaker hides the scan action until it is unpaired",
+            canScanForPairing(DeviceRole.SPEAKER, peer),
+        )
+        assertFalse(
+            "the capture phone never scans",
+            canScanForPairing(DeviceRole.CAPTURE, peer = null),
+        )
+        assertFalse(
+            "the capture phone never scans, paired or not",
+            canScanForPairing(DeviceRole.CAPTURE, peer),
+        )
+    }
+
+    @Test
+    fun theSummaryFollowsThePairingPredicates() {
+        for (role in DeviceRole.values()) {
+            for (candidate in listOf(null, peer)) {
+                val summary = pairingSummary(role, candidate)
+
+                assertEquals(
+                    "the QR flag must match the predicate for $role/$candidate",
+                    showsPairingQr(role, candidate),
+                    summary.showsQr,
+                )
+                assertEquals(
+                    "the scan flag must match the predicate for $role/$candidate",
+                    canScanForPairing(role, candidate),
+                    summary.showsScanAction,
+                )
+            }
+        }
     }
 
     @Test

@@ -47,11 +47,27 @@ fun pairingSummary(role: DeviceRole, peer: PairedPeer?): PairingSummary {
         },
         role = role,
         peerName = peer?.name,
-        showsQr = role == DeviceRole.CAPTURE,
-        showsScanAction = role == DeviceRole.SPEAKER,
+        showsQr = showsPairingQr(role, peer),
+        showsScanAction = canScanForPairing(role, peer),
         scanEnabled = canStartScanning(role),
     )
 }
+
+/**
+ * Only an unpaired capture phone has a code to show. There is room for a single
+ * peer, so once one is stored the QR disappears until the user unpairs; showing
+ * it again would invite a second phone that can never be recorded.
+ */
+fun showsPairingQr(role: DeviceRole, peer: PairedPeer?): Boolean =
+    role == DeviceRole.CAPTURE && peer == null
+
+/**
+ * Only an unpaired speaker has a code to scan. With the single-peer limit, a
+ * paired speaker can no longer store another phone, so the action is hidden
+ * rather than offered and then ignored.
+ */
+fun canScanForPairing(role: DeviceRole, peer: PairedPeer?): Boolean =
+    role == DeviceRole.SPEAKER && peer == null
 
 /**
  * The peer this emitter records when the first speaker connects, or null when

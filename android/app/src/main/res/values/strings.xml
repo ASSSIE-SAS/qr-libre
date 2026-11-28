@@ -67,6 +67,7 @@
     <string name="pairing_scan_invalid">Ese código no es de QR Libre. No se guardó nada.</string>
     <string name="pairing_speaker_android_11">En Android 11 o menor, esta versión no puede emparejar por QR: el sistema exige un permiso de ubicación que QR Libre no pide. La captura sigue funcionando.</string>
     <string name="pairing_unpair">Desemparejar</string>
+    <string name="pairing_already_paired">Ya está emparejado con %1$s. Para cambiar de teléfono, desempareja primero.</string>
 
     <string name="pairing_speaker_last_title">Último aviso</string>
     <string name="pairing_speaker_last_meta">%1$s · %2$s</string>
