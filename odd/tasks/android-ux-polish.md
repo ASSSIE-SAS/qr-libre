@@ -921,5 +921,5 @@ device matrix (AUP-6); `onDestroy` clearing is verified by inspection, not by an
 automated test. Authored lines: **395** (345 additions + 50 deletions) across
 the source commit.
 
-**Commits:** `d26db05` docs(odd) plan; the AUP-1 source commit hash is recorded
-in the follow-up docs commit that accompanies it.
+**Commits:** `d26db05` docs(odd) plan; `6d77533` fix(android) AUP-1
+implementation, tests, README and checklist; this docs update records both.
