@@ -30,6 +30,16 @@ payment was confirmed.
   selected or the listener is connecting; only the empty-history billboard is
   limited to the active state. "Vaciar historial" asks for confirmation and
   deletes every row.
+- **Detalle del aviso**: tapping a card opens a full-height, scrollable detail
+  with the complete title and body, the app label, the package name and the full
+  local timestamp (`HH:mm:ss dd/MM/yyyy`). The list card remains a 4-line preview
+  and keeps its short `HH:mm dd/MM` time. The detail text is selectable. "Copiar
+  texto" is the only clipboard action: it copies on tap, never on open, and
+  carries the reminder that the text can be pasted in another app while modern
+  Android generally keeps background apps from reading the clipboard. There is no
+  share sheet and no automatic copy. "Volver" and system back return to the same
+  list position, and the detail opens in every listener state, not only when
+  capture is active.
 - **Apps**: headed "Apps que quieres registrar", with launcher apps, icon, label
   and a checkbox. The selection is a `Set<String>` in the `qr_libre_settings`
   preferences. A search field appears when the list has more than 12 apps.
@@ -108,11 +118,13 @@ android/
     ui/QrLibreApp.kt         app shell, tab row, listener status
     ui/HistoryScreen.kt      status card, history note, voice sample, capture list
     ui/HistoryPresentation.kt first-run and voice visibility policy
+    ui/CaptureDetail.kt      full capture detail and explicit copy
     ui/AppsScreen.kt         app picker and search
     ui/PrivacyScreen.kt      privacy copy
     ui/Components.kt         shared empty-state card
     ui/Theme.kt              small Material 3 theme
     data/Capture.kt          row model
+    data/CaptureCopy.kt      pure clipboard payload builder
     data/CapturesDb.kt       SQLiteOpenHelper
     data/SelectedApps.kt     SharedPreferences set
     data/SelectionEvents.kt  in-process selection change signal
@@ -128,6 +140,8 @@ android/
     ListenerConnectionTest.kt listener binding signal
   app/src/test/java/co/asssie/qrlibre/ui/
     HistoryPresentationTest.kt first-run and voice visibility policy
+  app/src/test/java/co/asssie/qrlibre/data/
+    CaptureCopyTest.kt       verbatim clipboard payload
 ```
 
 `normalizeNotificationText` is a pure function: it trims each line, collapses
@@ -146,9 +160,9 @@ input.
 ## Limits of this version
 
 - No device or emulator was available while building this. The logic is
-  covered by unit tests for `normalizeNotificationText`, the listener state and
-  the history visibility policy; install and notification capture are
-  unverified on hardware.
+  covered by unit tests for `normalizeNotificationText`, the listener state, the
+  history visibility policy and the clipboard payload; install, notification
+  capture, detail navigation and the clipboard are unverified on hardware.
 - A notification update posts again and can create a second row. There is no
   deduplication key yet.
 - The history screen loads the newest 500 rows. The table keeps the rest until

@@ -1,8 +1,10 @@
 package co.asssie.qrlibre.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -91,8 +94,19 @@ internal fun HistoryScreen(
     val todayCount = remember(list) {
         list.orEmpty().count { capture -> isToday(capture.epochMs) }
     }
+    val listState = rememberLazyListState()
+    var openCapture by remember { mutableStateOf<Capture?>(null) }
+    // System back closes the detail first; only an already-open list lets the
+    // activity handle back and exit.
+    BackHandler(enabled = openCapture != null) { openCapture = null }
+    val opened = openCapture
+    if (opened != null) {
+        CaptureDetailScreen(capture = opened, onBack = { openCapture = null })
+        return
+    }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .animateContentSize(),
@@ -143,7 +157,11 @@ internal fun HistoryScreen(
         } else {
             if (presentation.showCaptures) {
                 items(list, key = { capture -> capture.id }) { capture ->
-                    CaptureCard(capture = capture, modifier = Modifier.animateItem())
+                    CaptureCard(
+                        capture = capture,
+                        onOpen = { openCapture = capture },
+                        modifier = Modifier.animateItem(),
+                    )
                 }
                 item {
                     TextButton(
@@ -489,9 +507,18 @@ private fun EmptyHistory(onOpenApps: () -> Unit) {
 }
 
 @Composable
-private fun CaptureCard(capture: Capture, modifier: Modifier = Modifier) {
+private fun CaptureCard(
+    capture: Capture,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(
+                onClickLabel = stringResource(R.string.history_open_detail),
+                onClick = onOpen,
+            ),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
