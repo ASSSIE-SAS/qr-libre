@@ -1,6 +1,6 @@
 # Android UX polish — preparation and work-unit plan
 
-**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 ACCEPTED; AUP-5 IMPLEMENTED — PENDING PARENT REVIEW; AUP-6 IMPLEMENTED — PENDING PARENT REVIEW
+**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 ACCEPTED; AUP-5 CORRECTED — PENDING PARENT VISUAL REVIEW; AUP-6 IMPLEMENTED — PENDING PARENT REVIEW
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
@@ -17,11 +17,12 @@ preparation produced was this artifact.
 parent after reading their actual diffs and rerunning the focused tests. AUP-4
 acceptance covers the diff and `DayWindowTest`; the SQL platform/runtime
 behavior is still explicitly pending and is not claimed as an executed runtime
-PASS. AUP-5 is implemented and locally committed, pending parent review. AUP-6 is
-implemented in `2f8ffb9` and pending parent review: the APK was installed over
-the existing app and screenshots were captured, but the 200% font matrix is
-still pending. Nothing has been pushed or merged. Implementation evidence is in
-§10, `odd/tasks/android-ux-polish-aup5-report.md` and
+PASS. AUP-5 was implemented in `040be54`; the AUP-6 install visual review then
+found a real landscape safe-inset gap, so AUP-5 is reopened and corrected in
+`e6c798d` pending parent visual review. AUP-6 is implemented in `2f8ffb9` and
+remains pending parent review; the 200% font matrix is still pending. Nothing
+has been pushed or merged. Implementation evidence is in §10,
+`odd/tasks/android-ux-polish-aup5-report.md` and
 `odd/tasks/android-ux-polish-aup6-report.md` (the AUP-4 report remains the record
 for that task).
 
@@ -57,7 +58,9 @@ with its parent review and local work-unit commit; do not duplicate it.
       explicitly pending (see §10), not accepted as a runtime PASS. Evidence in
       §10 and `odd/tasks/android-ux-polish-aup4-report.md`.
 - [ ] **AUP-5** Large text, touch targets, keyboard and contrast
-      — implemented in `040be54`; pending parent review. Evidence in §10 and
+      — implemented in `040be54`; reopened after the AUP-6 install visual review
+      found a landscape left-inset overlap and corrected in `e6c798d`; pending
+      parent visual review. Evidence in §10 and
       `odd/tasks/android-ux-polish-aup5-report.md`.
 - [ ] **AUP-6** Compact local-first privacy; final visual/device validation
       — implemented in `2f8ffb9`; pending parent review and the independent
@@ -1208,7 +1211,7 @@ execution, the midnight timer, resume refresh and dynamic receiver) remains
 **explicitly pending**; it is not accepted or claimed as a runtime PASS. The
 branch still needs the deferred device matrix before any PASS.
 
-### AUP-5 — implemented, local commit only, pending parent review
+### AUP-5 — reopened and corrected, pending parent visual review
 
 **TDD evidence (JUnit4 only, offline).** `ui/ContrastTest.kt` was written first
 against the real theme. To keep RED behavioral instead of a compile error,
@@ -1277,6 +1280,43 @@ advisory.
 (source, test, strings and README). The detailed RED/GREEN output is in the
 local, git-ignored `odd/tasks/android-ux-polish-aup5-report.md`. Not accepted
 yet.
+
+**Reopened correction — landscape horizontal safe insets.** The parent's visual
+review after the AUP-6 install found a real AUP-5 acceptance gap: with the
+device in landscape and Android's three-button navigation on the left, the
+first characters of `Tus avisos`, `Privacidad` and `Apps que quieres registrar`
+and the left hero/button edge were under the side navigation bar. The root shell
+consumed only `statusBarsPadding()` plus a bottom `navigationBars` spacer, so
+left/right safe-drawing insets were never applied.
+
+Manual visual RED: the recorded parent captures
+`aup6-history-current-102001.png`, `aup6-apps-default-102029.png` and
+`aup6-privacy-default-102016.png` (2400x1080, landscape) show the overlap. This
+is a manual visual failing check, **not** a JUnit reproduction of the OS
+overlap. Manual visual GREEN after `e6c798d`: the APK was reinstalled with
+`adb -s ace242eb install -r` (data and user state preserved, no permission,
+selection, orientation, font-scale or system-setting change), the app was
+opened and the three tabs were captured as
+`aup5-insets-history.png`, `aup5-insets-apps.png` and
+`aup5-insets-privacy.png`. `uiautomator dump` after the fix shows the tab
+content starting at x=130 (the device's 130px left inset) instead of x=0; the
+headline bounds are `Tus avisos [185,174]` and `Privacidad [185,124]`, clear of
+the side bar. The Apps list was allowed to finish loading before its capture.
+
+**What shipped in the correction.** `ui/QrLibreApp.kt` adds
+`windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))`
+to the root column, between the existing `statusBarsPadding()` and
+`imePadding()`. Only horizontal safe-drawing is consumed, so the top status bar,
+bottom navigation-bar spacer and IME bottom padding are not doubled; no
+orientation lock, hardcoded pixel margin, dependency, state, permission or
+database change was made. `android/README.md` notes the landscape side-bar and
+cutout behavior. Authored lines: **21** (17 additions + 4 deletions).
+
+**Correction verification.** `./gradlew --offline testDebugUnitTest assembleDebug`
+→ `BUILD SUCCESSFUL`, all **36** existing tests preserved (0 failures, 0
+errors, 0 skipped); `aapt` still lists no `android.permission.INTERNET`. The
+correction is pending the parent's visual review, and the AUP-6 200% font matrix
+remains pending. Not a final PASS.
 
 ### AUP-6 — implemented, local commit only, pending parent review
 
