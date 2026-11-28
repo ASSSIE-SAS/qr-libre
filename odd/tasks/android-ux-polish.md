@@ -1,0 +1,871 @@
+# Android UX polish — preparation and work-unit plan
+
+**Status:** READY FOR PARENT REVIEW — NOT IMPLEMENTED
+**Repository:** `/Users/erik/Desktop/qr-libre`
+**Branch:** `feat/android-ux-polish`
+**Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
+**Artifact:** this file only (`odd/tasks/android-ux-polish.md`)
+**Implementer:** DeepSeek (after the preflight decisions below)
+**Reviewers:** parent session for every task; independent final verifier after AUP-6
+
+This document is preparation only. No source file, test, Gradle file, README or
+design token was edited. No build, test run, device operation or device state
+change, commit, push, branch or subagent was performed. `git status --porcelain`
+was empty at inspection time. The only file produced by this work is this
+artifact.
+
+Technical prose is English. In-app copy is Spanish, quoted exactly where it is
+authorized.
+
+## 0. Stable execution checklist
+
+This is the single authoritative checklist. Update it only when a task closes
+with its parent review and local work-unit commit; do not duplicate it.
+
+- [ ] **AUP-1** Truthful listener state (permission ≠ connected ≠ apps selected)
+- [ ] **AUP-2** First-run hierarchy and truthful history note
+- [ ] **AUP-3** Full capture detail with explicit, truthful copy
+- [ ] **AUP-4** Accurate today aggregate across the whole table
+- [ ] **AUP-5** Large text, touch targets, keyboard and contrast
+- [ ] **AUP-6** Compact local-first privacy; final visual/device validation
+
+---
+
+## 1. Verified current behavior
+
+These are the facts the task split is based on; each one was read from the
+working tree, not inferred.
+
+| Area | Current behavior | Locator |
+| --- | --- | --- |
+| Permission state | `notificationAccess` is only `NotificationAccess.isGranted(this)`, refreshed in `onResume` | `MainActivity.kt:25`, `MainActivity.kt:51-58` |
+| Listener connection | The listener has no `onListenerConnected` / `onListenerDisconnected` override; it only captures posts | `QrLibreNotificationListener.kt:18-47` |
+| "Escuchando" | Any granted permission renders the hero as `Escuchando`, even with zero selected apps or an unbound listener | `HistoryScreen.kt:185-286`, especially `HistoryScreen.kt:250` |
+| Selected apps in history | Read once with `remember { SelectedApps(context).selected().size }`, not keyed to selection changes | `HistoryScreen.kt:84` |
+| Today counter | Counts rows in the newest-500 list, not the table | `HistoryScreen.kt:85-88`, `HistoryScreen.kt:415-420`, `CapturesDb.kt:49-74`, `CapturesDb.kt:83` |
+| Day boundary refresh | No midnight timer; the count only reloads when `CaptureEvents.version` changes | `HistoryScreen.kt:77-88` |
+| Capture cards | Body is capped at 4 lines; cards are not clickable; there is no detail view | `HistoryScreen.kt:361-413` |
+| Clear history | Confirmation dialog retained | `HistoryScreen.kt:158-182` |
+| App rows | Fixed `56.dp` row, single-line label | `AppsScreen.kt:217-293` |
+| Bottom navigation | Fixed `64.dp` row | `QrLibreApp.kt:112-141` |
+| Switch semantics | Row is `toggleable`; `Switch` uses `onCheckedChange = null`, so there is one callback | `AppsScreen.kt:225-236`, `AppsScreen.kt:272-283` |
+| Privacy screen | Intro plus five large cards plus a large closing surface | `PrivacyScreen.kt:42-48`, `PrivacyScreen.kt:84-127` |
+| Error contrast | `error = #EB3131` is used directly as text on cards; contrast is 4.28:1 on `#171717` and 3.98:1 on `#1E1E1E` | `Theme.kt:31`, `Theme.kt:83-86`, `HistoryScreen.kt:148`, `HistoryScreen.kt:308` |
+| Latent error tokens | `onError = #F5F4F0` gives 3.80:1 on `#EB3131`; `onErrorContainer = #EB3131` gives 3.98:1 on `#1E1E1E` | `Theme.kt:84`, `Theme.kt:86` |
+| Tests | One JUnit4 file; no Robolectric, no Compose UI test, no coroutine test dispatcher | `app/src/test/.../NotificationTextTest.kt:1-62`, `app/build.gradle.kts:53-66` |
+| Offline contract | No `INTERNET`; local SQLite and preferences only | `AndroidManifest.xml:4-15`, `README.md` |
+
+## 2. Global constraints
+
+- Preserve: no `INTERNET`, no network code, no analytics, no account, local
+  SQLite/preferences only, existing notification-access permission flow,
+  existing `TextToSpeech` test behavior, existing clear-history confirmation,
+  dark lime/Geist identity, minSdk 26 / compileSdk 35 / targetSdk 35, JDK 17,
+  Gradle 8.9, AGP 8.7.3, Kotlin 2.0.21, Compose BOM 2024.11.00.
+- No new dependencies. In particular, do not add Robolectric,
+  `ui-test-junit4`, `kotlinx-coroutines-test`, mock frameworks or icon packs.
+  All new automated tests must run under the existing JUnit4 test classpath.
+- No schema migration unless a task proves it is required. `captures.epoch_ms`
+  already has an index (`CapturesDb.kt:24`), so AUP-4 does not need one.
+- No payment recognition, amount parsing, bank rules, automatic speech or any
+  claim that a payment was confirmed. The app continues to say, in Spanish,
+  that these are stored notifications, not payment confirmations.
+- No private fixtures and no credential reads anywhere in this work.
+- Each task is its own local Conventional work-unit commit on
+  `feat/android-ux-polish`, with tests and the affected README/docs in the same
+  commit. Substantial implementation work and the user request authorize these
+  local commits; the parent may also commit this approved task document before
+  source work. No push, PR, merge to the default branch or other remote change
+  is authorized. No PR will be opened without the user.
+- Parent review is required after every task. The final acceptance still needs
+  independent verification; a green Gradle run alone is not a device PASS.
+
+## 3. Preflight decisions — unresolved, must be answered before source changes
+
+### 3.1 TDD mode: **ON**
+
+**Source:** the user answered "Pruebas primero" in this session; the parent
+recorded that choice when assigning AUP-1. Every task must show observed
+RED → GREEN → REFACTOR evidence for its new tests before implementation, using
+the existing JUnit4 classpath and the runner in §6. A minimal skeleton that
+returns a wrong stub is allowed only to demonstrate a behavioral RED failure;
+compile errors alone are not accepted as RED evidence.
+
+Historical note: preparation found no effective repository test-mode
+configuration. Checked: repository root and `android/` for `AGENTS.md`,
+`CLAUDE.md`, `.agents`, `openspec`, `sdd*`, and Markdown/JSON/TOML/YAML files
+containing `tdd`. There is no project registry and no SDD/OpenSpec tree. The
+existence of `NotificationTextTest.kt` was not evidence of the mode.
+
+Baseline observed before AUP-1 source work (offline, foreground):
+`./gradlew --offline testDebugUnitTest assembleDebug` → `BUILD SUCCESSFUL`;
+`NotificationTextTest` 7 tests, 0 failures, 0 errors, 0 skipped.
+
+### 3.2 Delivery and chaining
+
+- `delivery_strategy`: **auto-chain** (internal). The user chose "Rama
+  integradora" in this session.
+- `chain_strategy`: **feature-branch-chain**, one work-unit slice per AUP task
+  in execution order (§5). Each slice is a local Conventional Commit on
+  `feat/android-ux-polish`; tests and the affected README/docs travel in the
+  same commit.
+- The 400-line budget is advisory per task and not a cap; it is not a license to
+  code-golf. A task that honestly exceeds it reports the overage instead of
+  shrinking tests, docs or comments.
+- No PR, push, merge or other remote change is authorized. Local work-unit
+  commits are authorized per §2; there are no remote operations at all.
+
+### 3.3 Environment and memory
+
+- Device checks were **NOT RUN DURING PREPARATION**. Device `ace242eb`
+  (POCO F3, Android 13) was used in the parent UX review and remains connected.
+  Install, validation and any device mutation are pending explicit
+  authorization and are not part of planning. Planning performs no device state
+  changes.
+- `gentle-ai` is not installed (`which gentle-ai` is empty). RDD status and
+  assessment are therefore unavailable, not PASS.
+- Engram is bound to `asssie-landing` at `/Users/erik/Desktop/notifications-pay`
+  (`mem_current_project`, `project_source: git_remote`). The `qr-libre` project
+  is unavailable from this session. No Engram write was made and none may be
+  made elsewhere. The full mirror is pending under the intended topic
+  `odd/android-ux-polish/tasks`.
+
+## 4. Work-unit overview
+
+| ID | Work unit | Depends on | Forecast (A+D) | Commit type |
+| --- | --- | --- | --- | --- |
+| AUP-1 | Truthful permission / connection / selection state | — | ~300–340 | `fix(android)` |
+| AUP-2 | First-run hierarchy: one setup action, voice demoted | AUP-1 | ~200–230 | `feat(android)` |
+| AUP-3 | Full capture detail with explicit copy | AUP-1 | ~300–340 | `feat(android)` |
+| AUP-4 | Today count from SQL, with local-day boundaries | AUP-3 | ~190–220 | `fix(android)` |
+| AUP-5 | Large text, touch targets, keyboard and contrast | AUP-2 | ~190–230 | `fix(android)` |
+| AUP-6 | Compact, local-first privacy screen | AUP-5 | ~200–230 | `refactor(android)` |
+
+Execution order is strictly `AUP-1 → AUP-2 → AUP-3 → AUP-4 → AUP-5 → AUP-6`.
+AUP-2, AUP-3 and AUP-4 all touch `HistoryScreen.kt`; running them out of order
+would create avoidable conflicts. AUP-6 is independent in code but is last on
+purpose: it carries the visual/device checkpoint for the whole branch.
+
+All forecast numbers are authored additions plus deletions, excluding generated
+build output. Re-count from `git diff --stat` at each task boundary.
+
+---
+
+## AUP-1 — Truthful listener state
+
+**Objective.** The UI must never equate "permission granted" with "listener
+connected" or with "at least one app selected". Show one honest state:
+permission missing, no apps, connecting, or active.
+
+**Problem evidence.**
+- `MainActivity.kt:25,51-58` tracks only the secure setting.
+- `QrLibreNotificationListener.kt:18-47` never reports connection lifecycle, so
+  the app cannot distinguish "granted but unbound" (force-stop, reboot, OEM
+  kill) from "receiving notifications".
+- `HistoryScreen.kt:192-286` early-returns a permission card only when
+  `!granted`; every granted render shows `R.string.hero_listening` at line 250
+  even when `selectedApps == 0` or the service is not bound. `hero_no_apps` is
+  merely a warning line under a card that still says "Escuchando".
+- `HistoryScreen.kt:84` reads the selection once and never reacts to changes.
+
+**Authorized scope.**
+1. New pure status model in
+   `android/app/src/main/java/co/asssie/qrlibre/notifications/ListenerStatus.kt`:
+   ```kotlin
+   enum class ListenerUiState {
+       PERMISSION_MISSING,
+       NO_APPS,
+       CONNECTING,
+       ACTIVE,
+   }
+
+   fun resolveListenerUiState(
+       accessGranted: Boolean,
+       listenerConnected: Boolean,
+       selectedApps: Int,
+   ): ListenerUiState
+   ```
+   Precedence: no permission wins; then zero apps wins; then not connected is
+   `CONNECTING`; only all three true is `ACTIVE`.
+2. New process-local signal in
+   `android/app/src/main/java/co/asssie/qrlibre/notifications/ListenerConnection.kt`:
+   ```kotlin
+   object ListenerConnection {
+       val connected: StateFlow<Boolean>
+       fun onListenerConnected()
+       fun onListenerDisconnected()
+   }
+   ```
+   Default is `false`. It has no Android framework imports; the only
+   non-Kotlin import is `kotlinx.coroutines.flow`.
+3. Override `onListenerConnected()` and `onListenerDisconnected()` in
+   `QrLibreNotificationListener.kt`; call the two methods above. Do not change
+   `onNotificationPosted`, normalization or the insert path.
+4. `MainActivity.kt`: collect `ListenerConnection.connected` with
+   `collectAsStateWithLifecycle()` (already used in the project) and pass it to
+   `QrLibreApp`. Keep `NotificationAccess.requestRebind` in `onResume`.
+5. New selection signal in
+   `android/app/src/main/java/co/asssie/qrlibre/data/SelectionEvents.kt`:
+   ```kotlin
+   object SelectionEvents {
+       val version: StateFlow<Long>
+       fun notifyChanged()
+   }
+   ```
+   `SelectedApps.setSelected` calls `SelectionEvents.notifyChanged()` centrally
+   after the preference write, so every current and future writer emits the
+   signal without UI coordination. `AppsScreen` keeps calling
+   `preferences.setSelected`; it must not emit the event itself. `QrLibreApp`
+   collects the version, reads `SelectedApps(context).selected().size` keyed by
+   it, computes `resolveListenerUiState(...)`, and passes the status plus count
+   to `HistoryScreen`. `HistoryScreen` stops reading `SelectedApps` itself.
+6. `HistoryScreen.kt`: `HeroCard(status, todayCount, selectedApps, onOpenApps,
+   onOpenNotificationSettings)`.
+   - `PERMISSION_MISSING`: existing lime permission card.
+   - `NO_APPS`: warning card, `R.string.hero_no_apps`, text action "Elegir
+     apps"; no `hero_listening`.
+   - `CONNECTING`: title "Conectando con el sistema…", body explaining the
+     permission is on but the system has not delivered the listener yet; text
+     action "Revisar ajustes"; no `hero_listening`.
+   - `ACTIVE`: the only branch allowed to render `hero_listening`.
+   New strings: `hero_connecting`, `hero_connecting_body`, `hero_no_apps_action`.
+7. README `android/README.md`: one short paragraph in "What it does" stating
+   that the screen distinguishes access, an unbound listener and an empty app
+   selection.
+
+**Non-goals.** Do not restructure the first-run hierarchy (AUP-2), add the
+detail view (AUP-3), change the count source (AUP-4), change row/nav sizing or
+tokens (AUP-5), or touch privacy (AUP-6). No schema, no permission-flow change,
+no automatic rebind loop, no new dependency.
+
+**Acceptance tests.**
+- New `app/src/test/java/co/asssie/qrlibre/notifications/ListenerStatusTest.kt`
+  covering the complete truth table:
+  - `false, true, 2 → PERMISSION_MISSING` (permission wins).
+  - `true, true, 0 → NO_APPS` (no apps wins over connected).
+  - `false, false, 0 → PERMISSION_MISSING`.
+  - `true, false, 0 → NO_APPS`.
+  - `true, false, 2 → CONNECTING`.
+  - `true, true, 2 → ACTIVE`.
+  - Negative app counts are treated as none (or rejected explicitly; choose
+    one and test it).
+- Static evidence by inspection: `hero_listening` appears in exactly one branch
+  (the `ACTIVE` one); no `PERMISSION_MISSING`, `NO_APPS` or `CONNECTING` branch
+  renders it.
+- `rg -n "resolveListenerUiState|SelectionEvents|onListenerConnected|onListenerDisconnected" android/app/src/main` shows the wiring, and `SelectionEvents.notifyChanged()` appears centrally in `SelectedApps.kt`, not in `AppsScreen.kt`.
+- Non-`ACTIVE` statuses must not gate the capture list: saved rows remain
+  rendered whenever they exist (the detail requirement is completed in AUP-3).
+- Build check: command in §6.
+
+**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` (POCO F3,
+Android 13) remains connected; install and validation are pending explicit
+authorization and no device state changes are made in planning. Deferred device
+scenarios for the AUP-6 checkpoint: revoke permission while open (saved rows
+stay visible); grant permission without a rebind (expect "Conectando"); select
+apps after the listener connects (expect "Escuchando"); deselect all (expect
+"No apps", saved rows still visible); force-stop and reopen (expect a truthful
+temporary "Conectando", not an instant "Escuchando").
+
+**Rollback.** Remove `ListenerStatus.kt`, `ListenerConnection.kt`,
+`SelectionEvents.kt` and `ListenerStatusTest.kt`; revert the central emit in
+`SelectedApps`, the three listener lines, `MainActivity` collection and props,
+`QrLibreApp` selection read, and restore `HistoryScreen`'s direct
+permission/selection read. No data or schema change to undo.
+
+**Suggested commit.**
+`fix(android): report the real listener state instead of the permission`
+
+**Forecast:** ~300–340 authored lines (new model/signal/test ≈ 160–190; UI and
+wiring ≈ 130–150; README ≈ 8).
+
+---
+
+## AUP-2 — First-run hierarchy
+
+**Objective.** On a fresh install, lead with one compact actionable card and a
+single primary action. Do not feature a giant `0`, and do not put the voice test
+before setup.
+
+**Problem evidence.**
+- `HistoryScreen.kt:86-88` computes a count even before setup; `HeroCard`
+  renders `todayCount` with `displayLarge` at `HistoryScreen.kt:256-265`.
+- `HistoryScreen.kt:121-123` puts `VoiceTest` immediately after the hero, before
+  the empty-history explanation at line 136.
+- `HistoryScreen.kt:288-318` shows a test-speech button with no statement that
+  the app does not announce notifications automatically.
+- `strings.xml:26` labels the screen "Qué escuchar"; the requested plain phrase
+  is "Apps que quieres registrar".
+
+**Authorized scope.**
+1. Replace the granted hero with a compact status card driven by the AUP-1
+   state:
+   - `PERMISSION_MISSING`: compact permission card with `Button` "Dar acceso"
+     (`permission_grant_action`) as the only primary action.
+   - `NO_APPS`: card titled "Apps que quieres registrar", one body line, primary
+     `Button` "Elegir apps". This is the main onboarding action.
+   - `CONNECTING`: compact status card, "Conectando con el sistema…", secondary
+     text action "Revisar ajustes"; no voice test.
+   - `ACTIVE`: one compact summary row with a lime dot, "Escuchando" and the
+     today count inline (at most `titleLarge`). Remove `displayLarge` from this
+     screen so the number cannot dominate first run.
+2. Move `VoiceTest` below the history list/empty state and render it only when
+   `status == ACTIVE`. Add an explicit line under the button:
+   `"La voz solo lee una frase de prueba. La app no anuncia avisos automáticamente."`
+   (`R.string.voice_no_auto`). Keep the existing single test sentence and the
+   existing failure messages; no automatic speech.
+3. Add a caption near the history heading:
+   `"Son notificaciones guardadas, no confirmaciones de pago."`
+   (`R.string.history_note`). Keep it visible in every state.
+4. Suppress only the *empty* onboarding billboard. When `list` is non-empty,
+   always render the saved capture rows, including after permission is revoked,
+   every app is deselected, or the listener is disconnected. Gate only the
+   `EmptyHistory` block on `status == ACTIVE`, and only when `list` is empty, so
+   no second "Elegir apps" action or premature "Todavía no hay avisos" message
+   appears before setup. Saved records are never hidden by the status card.
+5. Change `R.string.apps_headline` to `"Apps que quieres registrar"`. Keep the
+   existing explanation text and the selection behavior.
+6. README: update the Historial/Apps bullets to describe the compact first-run
+   card, the note that these are stored notifications, and the voice test as a
+   manual sample only.
+
+**Non-goals.** No change to the state resolver (AUP-1), no detail view (AUP-3),
+no count source change (AUP-4), no new illustration, no onboarding carousel, no
+permission bypass, no automatic speech. Do not remove the permission card's
+system-settings button.
+
+**Acceptance tests.**
+- Permission missing: exactly one primary action ("Dar acceso"); no `0` counter;
+  no voice test.
+- Permission granted, zero apps: card says "Apps que quieres registrar" and
+  primary action "Elegir apps"; no `0` counter; no voice test.
+- Connecting: no "Escuchando".
+- Active: compact summary; voice test appears after the history content with the
+  no-auto-announcement line.
+- Saved history stays visible and readable with records present and permission
+  revoked, zero selected apps, or listener disconnected; tapping a record still
+  reaches the AUP-3 detail. Only the empty billboard is suppressed.
+- Static checks:
+  - `rg -n "displayLarge" android/app/src/main/java/co/asssie/qrlibre/ui/HistoryScreen.kt` → no matches.
+  - `rg -n "history_note|voice_no_auto|apps_headline" android/app/src/main/res/values/strings.xml` → present, and `voice_no_auto` is referenced from `HistoryScreen.kt`.
+  - `rg -n "VoiceTest|EmptyHistory" android/app/src/main/java/co/asssie/qrlibre/ui/HistoryScreen.kt` → each has one call site guarded by `ListenerUiState.ACTIVE`.
+- Build check in §6.
+- Deferred visual matrix (AUP-6): fresh install, granted/no-apps, connecting,
+  active/empty, active/with captures, at default and large font.
+
+**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` remains
+connected; install/validation is pending authorization and planning makes no
+device state changes. The states themselves are unit-tested in AUP-1; this task
+changes hierarchy, visibility and copy only.
+
+**Rollback.** Restore the prior hero/`VoiceTest` call order, the `displayLarge`
+count, the old `apps_headline` string and remove `history_note`/`voice_no_auto`.
+No behavioral or data migration.
+
+**Suggested commit.**
+`feat(android): lead first run with one setup action`
+
+**Forecast:** ~200–230 authored lines.
+
+---
+
+## AUP-3 — Full capture detail
+
+**Objective.** A capture card shows a 4-line preview and opens a readable,
+scrollable detail view with the complete body. Copy is an explicit action, with
+a clipboard privacy reminder; nothing is copied or shared automatically.
+
+**Problem evidence.**
+- `HistoryScreen.kt:402-410` truncates the body to `maxLines = 4`; title is
+  capped at 2 lines.
+- `HistoryScreen.kt:361-413` has no click target, no detail destination and no
+  way to read a long notification in full.
+- `Capture.kt:3-10` already carries `id`, `packageName`, `app`, `title`, `body`
+  and `epochMs`; no new storage is needed.
+
+**Authorized scope.**
+1. New pure copy helper
+   `android/app/src/main/java/co/asssie/qrlibre/data/CaptureCopy.kt`:
+   ```kotlin
+   fun captureCopyText(
+       app: String,
+       packageName: String,
+       title: String,
+       body: String,
+       timestamp: String,
+   ): String
+   ```
+   The header contains the app label, the package name, and the timestamp. A
+   non-empty title and a non-empty body follow as sections. The helper inserts
+   exactly one blank line (two newlines) between non-empty header/title/body
+   sections and adds no other separator; an empty title or body produces no
+   phantom section. The body is appended **verbatim**: do not trim, normalize,
+   squeeze, re-indent or strip its internal or edge line breaks. Inherent blank
+   lines in the body are data, not separator noise.
+2. New `android/app/src/main/java/co/asssie/qrlibre/ui/CaptureDetail.kt`:
+   ```kotlin
+   @Composable
+   internal fun CaptureDetailScreen(
+       capture: Capture,
+       onBack: () -> Unit,
+   )
+   ```
+   - Full height, `verticalScroll`, `SelectionContainer` around the text; no
+     line caps on title or body.
+   - Header: app label, full timestamp (`HH:mm:ss dd/MM/yyyy`, local), package
+     name in `MonoBody`; a text back action "Volver" and system back both
+     return to the list. The list card keeps its existing `HH:mm dd/MM`
+     timestamp, so the detail adds precision without changing the list.
+   - "Copiar texto" button uses `LocalClipboardManager.setText(AnnotatedString(...))`.
+     Copy happens only on click. The persistent caption is
+     `"Al copiar, el texto queda en el portapapeles y puedes pegarlo en otra app. En Android moderno, otras apps en segundo plano por lo general no lo leen."`
+     (`R.string.capture_detail_copy_hint`). After a click, show
+     `"Texto copiado."` (`R.string.capture_detail_copied`).
+   - No share `Intent`, no auto-copy on open, no "send" action.
+3. `HistoryScreen.kt`: hoist a `rememberLazyListState()` so the list position is
+   restored, keep `var openCapture by remember { mutableStateOf<Capture?>(null) }`,
+   add `BackHandler(enabled = openCapture != null) { openCapture = null }`, and
+   early-return `CaptureDetailScreen` when a capture is open. The detail path
+   depends only on a selected record, never on permission, connection or
+   selected apps, so records stay readable in every state. The lazy list keeps
+   `maxLines = 4` for bodies; do not add inline expansion.
+4. Add `Modifier.clickable(onClickLabel = stringResource(R.string.history_open_detail))`
+   to the card. A single card tap opens the detail; the clear-history action and
+   its confirmation dialog stay exactly as they are.
+5. New strings: `history_open_detail`, `capture_detail_back`,
+   `capture_detail_copy`, `capture_detail_copy_hint`,
+   `capture_detail_copied`.
+6. README: document tap-to-open, the explicit copy action, the clipboard hint,
+   and that cards remain 4-line previews.
+
+**Non-goals.** No inline expand/collapse, no share sheet, no auto-copy, no
+per-row delete, no image/media handling, no rich text parsing, no detection
+logic. Keep the existing bulk clear confirmation and all stored fields.
+
+**Acceptance tests.**
+- New `app/src/test/java/co/asssie/qrlibre/data/CaptureCopyTest.kt`:
+  - a long multi-line body (well over 4 lines) that contains internal blank
+    lines is preserved byte-for-byte, including its inherent edge line breaks;
+  - an empty title and/or empty body adds no phantom section separator; the
+    helper inserts exactly one blank line between non-empty sections, and
+    returns the header alone when both are empty;
+  - Unicode (accents, `$`, emoji) is preserved;
+  - the header includes the app label, package name and timestamp, with the
+    package name appearing exactly once in the header.
+- Deferred device/manual check for reachability: with saved records and
+  permission revoked, zero apps selected, and listener disconnected, the rows
+  remain visible and each opens the detail.
+- Static evidence:
+  - `rg -n "maxLines = 4" android/app/src/main/java/co/asssie/qrlibre/ui/HistoryScreen.kt` → still exactly the card preview.
+  - `rg -n "ACTION_SEND|Intent.createChooser|startActivity" android/app/src/main/java/co/asssie/qrlibre/ui/CaptureDetail.kt` → no matches; no sharing.
+  - `rg -n "BackHandler|capture_detail_copy_hint|SelectionContainer" .../ui/CaptureDetail.kt .../ui/HistoryScreen.kt`.
+- Navigation automation is **not feasible** with the current `junit:junit`
+  only test classpath; adding Compose UI test or Robolectric would violate the
+  no-new-dependency constraint. Navigation is therefore a code review plus the
+  AUP-6 device checklist, explicitly recorded as manual.
+- Build check in §6.
+- Deferred device checklist: tap a card; scroll a long body; system back and
+  "Volver"; copy and verify the hint; confirm clear-history still asks first.
+
+**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` remains
+connected; install/validation is pending authorization and planning makes no
+device state changes. Clipboard and navigation are platform behaviors; the copy
+builder is the unit-tested part.
+
+**Rollback.** Delete `CaptureDetail.kt`, `CaptureCopy.kt` and
+`CaptureCopyTest.kt`; revert the clickable modifier, detail state/back handling,
+hoisted list state and new strings. No data changes.
+
+**Suggested commit.**
+`feat(android): add a full notification detail view`
+
+**Forecast:** ~300–340 authored lines.
+
+---
+
+## AUP-4 — Accurate today aggregate
+
+**Objective.** "Today" counts every row whose `epoch_ms` falls in the current
+local day, independent of the newest-500 list limit, and refreshes after local
+midnight, on resume, and when the system time or time zone changes.
+
+**Problem evidence.**
+- `HistoryScreen.kt:86-88` uses `list.orEmpty().count { isToday(...) }`, where
+  `list` is `recentCaptures()` limited to 500 (`CapturesDb.kt:49-74,83`).
+- `HistoryScreen.kt:415-420` compares `Calendar` year/day-of-year, but only when
+  the list reloads; there is no midnight refresh.
+- `captures.epoch_ms` is already indexed (`CapturesDb.kt:24`), so no schema
+  change is needed.
+
+**Authorized scope.**
+1. `CapturesDb.kt`: add
+   ```kotlin
+   fun countCapturesBetween(startMsInclusive: Long, endMsExclusive: Long): Long
+   ```
+   implemented as `SELECT COUNT(*) FROM captures WHERE epoch_ms >= ? AND epoch_ms < ?`
+   on the readable database, with `use { ... }`. No schema version bump, no
+   table change.
+2. New pure `android/app/src/main/java/co/asssie/qrlibre/data/DayWindow.kt`:
+   ```kotlin
+   data class LocalDayRange(val startMs: Long, val endMs: Long)
+
+   fun localDayRange(
+       nowMs: Long,
+       zone: ZoneId = ZoneId.systemDefault(),
+   ): LocalDayRange
+
+   fun millisUntilNextLocalMidnight(
+       nowMs: Long,
+       zone: ZoneId = ZoneId.systemDefault(),
+   ): Long
+   ```
+   Use `java.time` (`Instant`, `ZoneId`, `LocalDate.atStartOfDay`), available at
+   minSdk 26 without desugaring. End is exclusive: next local midnight.
+3. `HistoryScreen.kt`: remove the list-based `isToday` computation and the
+   `Calendar` helper. Keep `todayCount` in its own state; load it in the same
+   IO coroutine as the list via `countCapturesBetween(range.startMs,
+   range.endMs)`. Key the effect on `CaptureEvents.version` and a `dayTick`.
+   Increment `dayTick` from three local triggers:
+   - a foreground coroutine that delays `millisUntilNextLocalMidnight(...)`
+     (plus a small guard, e.g. 1s) and repeats — an in-process timer, not an OS
+     scheduled job;
+   - the screen's `ON_RESUME` lifecycle (recompute `ZoneId.systemDefault()`, so
+     returning from another app or settings after a time/zone change refreshes);
+   - a dynamically registered receiver for `Intent.ACTION_TIME_CHANGED` and
+     `Intent.ACTION_TIMEZONE_CHANGED`, registered while the screen is active
+     and unregistered on dispose. No manifest entry, no new permission.
+4. README: note that today's count is a full-table SQL count and refreshes at
+   local midnight, on resume, and after a system time or time-zone change,
+   while the list stays limited to 500.
+
+**Non-goals.** No timezone setting, no date-range picker, no pagination, no
+schema migration, no change to stored timestamps, no aggregation for other days.
+No `AlarmManager`, `JobScheduler`, `WorkManager`, background service, manifest
+receiver or new permission.
+
+**Acceptance tests.**
+- New `app/src/test/java/co/asssie/qrlibre/data/DayWindowTest.kt` using fixed
+  zones and instants:
+  - `2026-11-28T00:00:00-05:00` is inside the range; `2026-11-27T23:59:59.999-05:00`
+    is outside.
+  - the range end equals the next local midnight and the next range start;
+  - month/year rollover (`2026-12-31` → `2027-01-01`);
+  - `millisUntilNextLocalMidnight` is strictly positive and at most 25h at the
+    tested instants;
+  - a DST-observing zone (e.g. `America/New_York`) still yields midnight-to-
+    midnight boundaries (a 23h/25h day is accepted).
+- These boundary tests do **not** test the SQL count. The query is reviewed for
+  the exclusive upper bound and the existing index; it has no automated test
+  without Robolectric/instrumentation, both excluded by the no-new-dependency
+  rule. Do not report SQL as tested from boundary tests alone.
+- Static checks:
+  - `rg -n "isToday|Calendar" android/app/src/main/java/co/asssie/qrlibre/ui/HistoryScreen.kt` → no matches.
+  - `rg -n "countCapturesBetween|localDayRange|millisUntilNextLocalMidnight|ACTION_TIMEZONE_CHANGED|ACTION_TIME_CHANGED" android/app/src/main` → wiring present.
+  - `rg -n "AlarmManager|JobScheduler|WorkManager" android/app/src/main` → no matches.
+- Build check in §6.
+- Deferred manual matrix (AUP-6), not run in preparation:
+  - after local midnight while the screen is foreground, the count resets
+    without a restart;
+  - leave and return to the app after changing the device time/date or time
+    zone (`ON_RESUME`) and the count matches the new local day;
+  - change the time zone while the screen is foreground and the dynamic
+    receiver refreshes it;
+  - with more than 500 stored rows the count exceeds the visible list length;
+  - the SQL result matches an independent on-device count (e.g. `adb`/`run-as`
+    `sqlite3` query) when such access is authorized.
+
+**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` remains
+connected; install/validation is pending authorization and planning makes no
+device state changes. The boundary logic is pure and unit-tested; the SQL count,
+resume/time-zone refresh and midnight behavior need the deferred manual matrix.
+
+**Rollback.** Remove `countCapturesBetween`, `DayWindow.kt` and its test; restore
+the list-based `isToday` count and delete the timer, resume trigger and
+dynamic receiver. No schema or data change to undo.
+
+**Suggested commit.**
+`fix(android): count today's captures across the whole table`
+
+**Forecast:** ~210–250 authored lines.
+
+---
+
+## AUP-5 — Large text, touch targets, keyboard and contrast
+
+**Objective.** Rows and navigation grow with font scale instead of clipping;
+touch targets stay at least 48dp; search remains usable with the keyboard open;
+the switch keeps a single callback; error text meets 4.5:1 on dark surfaces.
+
+**Problem evidence.**
+- `AppsScreen.kt:228` fixes every app row at `56.dp`; `AppsScreen.kt:267` limits
+  labels to one line.
+- `QrLibreApp.kt:126` fixes the bottom bar at `64.dp`, with
+  `fillMaxHeight()` children at `QrLibreApp.kt:135`.
+- `QrLibreApp.kt:77` applies `imePadding()` to the shell, but the bottom bar
+  keeps consuming space while the keyboard is open.
+- `AppsScreen.kt:272-283` already uses `Switch(onCheckedChange = null)`; this
+  must not regress into a second callback.
+- `Theme.kt:84,86` holds the latent low-contrast error tokens. The audit also
+  found that `colorScheme.error` is used as text at `HistoryScreen.kt:148,308`
+  (4.28:1 on `#171717`), so fixing only the latent tokens would leave visible
+  danger copy below 4.5:1.
+
+**Authorized scope.**
+1. `AppsScreen.kt` `AppRow`: replace `.height(56.dp)` with
+   `.heightIn(min = 56.dp)` plus vertical padding; allow the label
+   `maxLines = 2` (ellipsis beyond). Keep the whole row `toggleable`, keep
+   `Switch(onCheckedChange = null)`, and keep the existing selected/divider
+   behavior.
+2. `QrLibreApp.kt` `BottomBar`: replace fixed `.height(64.dp)` with
+   `.heightIn(min = 64.dp)`; remove `fillMaxHeight()` from the item modifier and
+   give each item `defaultMinSize(minHeight = 48.dp)` with vertical padding, so
+   labels can grow at large font scale without a fixed clip. Keep the
+   `selectable(role = Role.Tab)` semantics and the 22dp icon.
+3. Keyboard/search: read IME visibility from `WindowInsets.ime` (and
+   `LocalDensity`) in `QrLibreApp`; hide the bottom bar while the IME is visible
+   so the app list keeps vertical space, restore it when the keyboard closes.
+   Keep the existing `imePadding()`. Do not change tab state or selection.
+4. Contrast (parent-approved, including the visible low-contrast danger text):
+   - In `Theme.kt`, extract the tested palette values to an internal object of
+     pure `Long` ARGB constants, e.g. `QrLibreColorValues` with `Page`, `Card`,
+     `Elevated`, `Divider`, `Danger`, `DangerText`, `OnLime`, `Text`, `Muted`.
+     `QrLibreColors` must construct its `Color(...)` values from that object,
+     so tests pin the real palette instead of keeping independent copies. This
+     is the smallest change; do not build a production contrast engine.
+   - `Theme.kt`: `onError = OnLime` (`#0B0B0B`, 4.70:1 on `#EB3131`, replacing
+     the 3.80:1 light text) and `onErrorContainer = DangerText` (`#FF7A7A`,
+     6.60:1 on `#1E1E1E`, replacing 3.98:1).
+   - Add `DangerText = #FF7A7A` to `QrLibreColors`; use it for the two actual
+     danger text call sites in `HistoryScreen.kt:148,308` so visible error copy
+     also reaches 4.5:1.
+   - Keep `error = #EB3131` for any future filled error surface and keep all
+     other tokens unchanged.
+5. New `app/src/test/java/co/asssie/qrlibre/ui/ContrastTest.kt` with a
+   **test-local** `contrastRatio(foreground: Long, background: Long)` helper
+   (relative-luminance math belongs in the test utility, not shipping code) and
+   assertions against `QrLibreColorValues` for ratios ≥4.5 for normal text.
+6. README: no behavior copy change needed unless the keyboard/nav behavior is
+   worth one line; add a short accessibility note if it is.
+
+**Non-goals.** No light theme, no dynamic color, no font swap, no icon pack, no
+new dependency, no haptics, no redesign of the app list, no change to selection
+persistence or switch semantics.
+
+**Acceptance tests.**
+- `ContrastTest`: `OnLime` on `Danger` ≥ 4.5 (4.70); `DangerText` on `Page`,
+  `Card`, `Elevated`, `Divider` ≥ 4.5 (7.65 / 7.10 / 6.60 / 5.99); baseline
+  `Text`/`Muted` ratios still pass on the same surfaces.
+- Static checks:
+  - `rg -n "\.height\(56\.dp\)|\.height\(64\.dp\)" android/app/src/main/java/co/asssie/qrlibre/ui` → no matches in `AppsScreen.kt` or `QrLibreApp.kt`.
+  - `rg -n "onCheckedChange = null" android/app/src/main/java/co/asssie/qrlibre/ui/AppsScreen.kt` → present exactly once.
+  - `rg -n "heightIn\(min = 56\.dp\)|heightIn\(min = 64\.dp\)|defaultMinSize\(minHeight = 48\.dp\)" .../ui` → present.
+  - `rg -n "contrastRatio" android/app/src/main` → no matches; the ratio math exists only in `app/src/test/.../ContrastTest.kt`.
+  - `rg -n "QrLibreColorValues" android/app/src/main/java/co/asssie/qrlibre/ui/Theme.kt app/src/test/java/co/asssie/qrlibre/ui/ContrastTest.kt` → production palette and test pin the same constants.
+- Build check in §6.
+- Deferred device matrix (AUP-6), at 100%, 150% and 200% font scale:
+  - no clipped app labels; long labels wrap to at most 2 lines;
+  - rows and nav remain tappable and ≥48dp;
+  - search list scrolls to its last row with the keyboard open, and the bottom
+    bar returns after dismissal with the tab selection preserved;
+  - switch toggles once per tap (no double callback);
+  - danger text is legible on cards.
+
+**Runtime harness.** NOT RUN DURING PREPARATION. Device `ace242eb` remains
+connected; install/validation is pending authorization and planning makes no
+device state changes. Font-scale, IME and touch targets are platform/visual
+behaviors; deferred explicitly to AUP-6.
+
+**Rollback.** Restore the fixed heights, the one-line app label, the always-on
+bottom bar and the old error tokens/call-site colors; revert the
+`QrLibreColorValues` extraction and delete `ContrastTest.kt`. No data change.
+
+**Suggested commit.**
+`fix(android): support large text and accessible contrast`
+
+**Forecast:** ~190–230 authored lines.
+
+---
+
+## AUP-6 — Compact, local-first privacy screen
+
+**Objective.** Replace five repeated large cards with concise sections, lead
+with the local-data reassurance, and keep every substantive promise.
+
+**Problem evidence.**
+- `PrivacyScreen.kt:42-48` defines five entries; `PrivacyScreen.kt:84-127`
+  renders each as a large card with a 40dp icon tile.
+- The order starts with "Qué lee"; the local reassurance ("Dónde queda") is
+  second.
+- `PrivacyScreen.kt:50-81` plus `strings.xml:66-77` hold the copy that must
+  survive: reads only selected apps, stays on the phone/no INTERNET, clearing is
+  irreversible, no account/ads/tracking, and no payment confirmation.
+
+**Authorized scope.**
+1. Rework `PrivacyScreen.kt` into one compact column of borderless sections
+   separated by `HorizontalDivider`s, with a smaller inline icon (20dp) and
+   title/body typography from the existing scale. Remove the per-entry `Card`
+   and the 40dp icon tile.
+2. Order: local reassurance first ("Dónde queda"), then "Qué lee", "Qué no
+   hace", "Puedes borrarlo", "Sin cuenta y sin anuncios". Put a short
+   local-first line in the intro, e.g.
+   `"Tus avisos se quedan en este teléfono. Esto es lo que la app hace y lo que no."`
+   (new/edited `privacy_intro`).
+3. Preserve the substance exactly: clearing is irrecoverable; the app does not
+   confirm payments or query the bank; no INTERNET; captures are only from
+   selected apps; no account, ads, tracking.
+4. Keep the closing reassurance ("Nada sale de tu teléfono.") but make it a
+   compact line/surface, not another large card. Keep the source footer.
+5. Add the final visual/device validation checkpoint here: this task is not
+   accepted on build alone. The deferred matrix covers the reordered privacy
+   screen and the whole branch at default and large font, including scroll to
+   the last section and no clipped text.
+
+**Non-goals.** No legal-policy expansion, no settings toggles, no data-export
+feature, no new permissions, no behavior change to deletion or capture. Do not
+remove the "no payment confirmation" statement or the irrecoverable-deletion
+statement.
+
+**Acceptance tests.**
+- Copy review confirms both required statements are present and unweakened:
+  `privacy_delete_body` (irrecoverable) and `privacy_limit_body` (no payment
+  confirmation / no bank query).
+- Static checks:
+  - `rg -n "Card\(" android/app/src/main/java/co/asssie/qrlibre/ui/PrivacyScreen.kt` → no per-entry cards; at most a compact closing surface if needed.
+  - `rg -n "privacy_stays_body|privacy_delete_body|privacy_limit_body" android/app/src/main/java/co/asssie/qrlibre/ui/PrivacyScreen.kt` → all are rendered in the new order.
+  - `rg -n "Todo se queda|Nada sale|No se puede recuperar|no es un pago verificado" android/app/src/main/res/values/strings.xml` → substance present.
+- Build check in §6.
+- Final checkpoint, NOT RUN DURING PREPARATION: once install/validation is
+  authorized on device `ace242eb` (POCO F3, Android 13), check default and 200%
+  font, scroll through every section, verify contrast and no truncation, then
+  run the full branch matrix from AUP-1, AUP-3, AUP-4 and AUP-5. Record the
+  exact device, Android version and observations. Until then the artifact
+  status is **not PASS** and planning makes no device state changes.
+
+**Runtime harness.** NOT RUN DURING PREPARATION; device `ace242eb` remains
+connected and install/validation is pending authorization. This is the explicit
+final visual checkpoint; it must be executed by the parent and confirmed by the
+independent final verifier before any "done" claim.
+
+**Rollback.** Restore the five-card layout and entry order from the prior
+commit; restore the previous `privacy_intro` string. No data change.
+
+**Suggested commit.**
+`refactor(android): make the privacy screen concise and local-first`
+
+**Forecast:** ~200–230 authored lines.
+
+---
+
+## 5. Delivery forecast and candidate slices
+
+Honest authored additions + deletions, based on the files and behaviors above:
+
+| Task | Low | High |
+| --- | ---: | ---: |
+| AUP-1 | 300 | 340 |
+| AUP-2 | 200 | 230 |
+| AUP-3 | 300 | 340 |
+| AUP-4 | 210 | 250 |
+| AUP-5 | 190 | 230 |
+| AUP-6 | 200 | 230 |
+| **Total** | **~1,400** | **~1,620** |
+
+Planning number: **~1,480 authored lines**. Each individual work unit is below
+the advisory 400, but the total is far above it. This is a forecast, not a
+promise; re-count at every task boundary.
+
+Candidate slices: the selected plan is **one task per slice, in execution order**,
+with no bundling and no out-of-order combination:
+
+- S1: AUP-1 (~320) — truthful state only.
+- S2: AUP-2 (~215) — first-run hierarchy.
+- S3: AUP-3 (~320) — detail view.
+- S4: AUP-4 (~230) — today aggregate.
+- S5: AUP-5 (~210) — accessibility and contrast.
+- S6: AUP-6 (~215) — privacy and final validation.
+
+The 400-line advisory is not a cap, and coherent behaviors are not chopped to
+meet it. `chain_strategy` is **feature-branch-chain**, selected by the user in
+this session ("Rama integradora"). Local work-unit commits are authorized by
+§2; no PR, push or remote change is authorized, and no PR will be opened without
+the user.
+
+## 6. Checks
+
+Do not run these during preparation. They are the exact commands the
+implementer/parent should use after each task (adjust `--tests` to the new test
+class where applicable):
+
+```bash
+cd android && ANDROID_HOME=/Users/erik/Library/Android/sdk ./gradlew testDebugUnitTest assembleDebug
+```
+
+Focused examples:
+
+```bash
+cd android && ANDROID_HOME=/Users/erik/Library/Android/sdk ./gradlew testDebugUnitTest --tests "co.asssie.qrlibre.notifications.ListenerStatusTest"
+cd android && ANDROID_HOME=/Users/erik/Library/Android/sdk ./gradlew testDebugUnitTest --tests "co.asssie.qrlibre.data.CaptureCopyTest"
+cd android && ANDROID_HOME=/Users/erik/Library/Android/sdk ./gradlew testDebugUnitTest --tests "co.asssie.qrlibre.data.DayWindowTest"
+cd android && ANDROID_HOME=/Users/erik/Library/Android/sdk ./gradlew testDebugUnitTest --tests "co.asssie.qrlibre.ui.ContrastTest"
+```
+
+Expected: `BUILD SUCCESSFUL`, all tests green, APK at
+`app/build/outputs/apk/debug/app-debug.apk`. Also keep the existing offline
+check in the final review:
+
+```bash
+/Users/erik/Library/Android/sdk/build-tools/34.0.0/aapt dump permissions android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+The output must not contain `android.permission.INTERNET`.
+
+## 7. Risks
+
+| Risk | Impact | Mitigation |
+| --- | --- | --- |
+| Total change is ~1,480 lines | Delivery/review overload | `auto-chain` + `feature-branch-chain`, one slice per task; small work-unit commits; re-count per task |
+| No Compose/Robolectric test deps | Navigation, IME, font-scale and clipboard cannot be automated now | Pure logic tests; explicit AUP-6 device checkpoint; independent final verification |
+| Three tasks touch `HistoryScreen.kt` | Merge/conflict churn | Strict order AUP-2 → AUP-3 → AUP-4; re-read the file before each edit |
+| Listener callback timing / OEM rebind | A transient "Conectando" even when things work | Truthful state is the requirement; default disconnected; test the matrix on device |
+| Contrast changes touch real palette tokens | Visual identity drift | Parent-approved; tests read the production `QrLibreColorValues`, ratio math stays test-local; review the token diff |
+| Midnight / resume / time-zone edge cases | Wrong "today" count | Pure `DayWindow` tests incl. month/year/DST; in-process timer plus resume and dynamic time/time-zone receiver; manual matrix |
+| Clipboard privacy wording | Overclaiming insecurity | Say the user can paste elsewhere and that modern Android does not let background apps freely read the clipboard; no auto-copy |
+| Device checks not run during preparation | Visual regressions unproven | Device `ace242eb` remains connected; install/validation pending authorization; AUP-6 checkpoint plus independent verifier |
+
+## 8. Progress and next step
+
+**Done in this preparation**
+- Read the required skills and the actual Android sources, strings, Gradle
+  config, tests, manifest, README and design tokens.
+- Verified the baseline is clean (`git status --porcelain` empty).
+- Produced exactly one file: `odd/tasks/android-ux-polish.md`.
+
+**Not done in this preparation**
+- No source, test, resource, Gradle or README edit.
+- No build, test run, install, device command or device state change, commit,
+  push, branch or subagent.
+- No Engram write; no RDD assessment.
+
+**Parent actions requested**
+1. Review and approve the stable checklist, six work-unit scopes and exact
+   Spanish copy.
+2. Answer the TDD question (§3.1) before any source work.
+3. Confirm the one-task-per-slice chain plan (§3.2/§5).
+4. Assign AUP-1 to DeepSeek only after 1–3; review each task before the next,
+   and allow the local work-unit commit for each approved task.
+5. Authorize install/validation on device `ace242eb` for the AUP-6 checkpoint
+   and confirm the independent final verifier. Until then the branch is not
+   PASS.
+
+## 9. Skill resolution
+
+- **Loaded:** `/Users/erik/.agents/skills/work-unit-commits/SKILL.md` and
+  `/Users/erik/.agents/skills/impeccable/reference/product.md`.
+- **Project registry:** none found (no `AGENTS.md`, `CLAUDE.md`, `.agents`,
+  `openspec` or `sdd*`). No SDD/OpenSpec artifacts exist for this repo.
+- **gentle-ai:** not installed (`which gentle-ai` empty). RDD status and
+  assessment are unavailable; this is **not** a PASS.
+- **Engram:** `mem_current_project` resolves to `asssie-landing` at
+  `/Users/erik/Desktop/notifications-pay` from `git_remote`. `qr-libre` is not
+  available and no memory was written. Full mirror remains pending under the
+  intended topic `odd/android-ux-polish/tasks`; do not save it to another
+  project.
