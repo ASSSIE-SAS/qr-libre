@@ -1,6 +1,6 @@
 # Android UX polish — preparation and work-unit plan
 
-**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 ACCEPTED; AUP-5 IMPLEMENTED — PENDING PARENT REVIEW; AUP-6 NOT STARTED
+**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 ACCEPTED; AUP-5 IMPLEMENTED — PENDING PARENT REVIEW; AUP-6 IMPLEMENTED — PENDING PARENT REVIEW
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
@@ -17,11 +17,13 @@ preparation produced was this artifact.
 parent after reading their actual diffs and rerunning the focused tests. AUP-4
 acceptance covers the diff and `DayWindowTest`; the SQL platform/runtime
 behavior is still explicitly pending and is not claimed as an executed runtime
-PASS. AUP-5 is implemented and locally committed, pending parent review; AUP-6
-is not started. Nothing has been pushed, merged or installed, and no device
-validation has been run. Implementation evidence is in §10 and
-`odd/tasks/android-ux-polish-aup5-report.md` (the AUP-4 report remains the
-record for that task).
+PASS. AUP-5 is implemented and locally committed, pending parent review. AUP-6 is
+implemented in `2f8ffb9` and pending parent review: the APK was installed over
+the existing app and screenshots were captured, but the 200% font matrix is
+still pending. Nothing has been pushed or merged. Implementation evidence is in
+§10, `odd/tasks/android-ux-polish-aup5-report.md` and
+`odd/tasks/android-ux-polish-aup6-report.md` (the AUP-4 report remains the record
+for that task).
 
 Technical prose is English. In-app copy is Spanish, quoted exactly where it is
 authorized.
@@ -58,6 +60,9 @@ with its parent review and local work-unit commit; do not duplicate it.
       — implemented in `040be54`; pending parent review. Evidence in §10 and
       `odd/tasks/android-ux-polish-aup5-report.md`.
 - [ ] **AUP-6** Compact local-first privacy; final visual/device validation
+      — implemented in `2f8ffb9`; pending parent review and the independent
+      verifier's large-font matrix. Evidence in §10 and
+      `odd/tasks/android-ux-polish-aup6-report.md`.
 
 ---
 
@@ -1272,3 +1277,74 @@ advisory.
 (source, test, strings and README). The detailed RED/GREEN output is in the
 local, git-ignored `odd/tasks/android-ux-polish-aup5-report.md`. Not accepted
 yet.
+
+### AUP-6 — implemented, local commit only, pending parent review
+
+**TDD evidence (JUnit4 only, offline).** The production screen now renders an
+`internal` ordered `privacySections` list. To keep RED behavioral rather than a
+compile error, a refactor-only skeleton moved the existing entries into that
+list with the **old** order and the old cards. `ui/PrivacySectionsTest.kt` was
+written against the required order and failed on an assertion:
+
+```text
+PrivacySectionsTest > localReassuranceComesFirstAndNoSectionIsDropped FAILED
+    java.lang.AssertionError at PrivacySectionsTest.kt:19
+2 tests completed, 1 failed
+```
+
+The XML message showed the expected title ids (stays, reads, limit, delete,
+identity) against the skeleton's actual ids (reads, stays, delete, identity,
+limit). The second test, `eachSectionKeepsItsOwnBody`, was green in the
+skeleton by design and guards title→body swaps. GREEN after reordering the real
+list, the compact layout and the new `privacy_intro`: focused
+`PrivacySectionsTest` → 2/2, `BUILD SUCCESSFUL`.
+
+**What shipped**
+- `ui/PrivacyScreen.kt`: `PrivacySection` + `privacySections` (Dónde queda, Qué
+  lee, Qué no hace, Puedes borrarlo, Sin cuenta y sin anuncios). Borderless
+  rows with a 20dp inline icon, `titleSmall` bold title and `bodyMedium` muted
+  body; `HorizontalDivider` between sections; no per-entry `Card` and no 40dp
+  tile. The closing "Nada sale de tu teléfono." is one compact row above the
+  unchanged source footer.
+- `res/values/strings.xml`: only `privacy_intro` changed to "Tus avisos se
+  quedan en este teléfono. Esto es lo que la app hace y lo que no." All
+  disclosure strings are preserved verbatim, including the irrecoverable
+  deletion and the no-payment-confirmation / no-bank-query statements.
+- `ui/PrivacySectionsTest.kt`: order/size plus title→body pairing, reading the
+  real production list the screen consumes.
+- `android/README.md`: local-first privacy note, test-map entry and coverage
+  sentence.
+
+**Static evidence.** `grep -n "Card(" PrivacyScreen.kt` → none; all five
+`privacy_*_body` resources appear in `privacySections` in the new order;
+`strings.xml` still contains "Nada sale de tu teléfono", "No se puede
+recuperar", "permiso de internet" and "no es un pago verificado".
+
+**Full verification (foreground, offline).**
+`./gradlew --offline testDebugUnitTest assembleDebug --rerun-tasks` →
+`BUILD SUCCESSFUL`, 41/41 tasks executed, **36/36 tests** (34 prior + 2
+`PrivacySectionsTest`), 0 failures, 0 errors, 0 skipped. `aapt` lists only
+`co.asssie.qrlibre.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, no
+`android.permission.INTERNET`.
+
+**Device evidence.** `adb -s ace242eb install -r app-debug.apk` → `Success`; app
+data was preserved and no selection, permission or system setting was changed.
+Device `ace242eb` (POCO F3, Android 13) was in landscape, font scale 1.0 (read
+only). Captures under
+`/private/var/folders/ff/hrsxp6x120z072qb2t7ccxq40000gp/T/opencode/`:
+`aup6-history-current-102001.png`, `aup6-privacy-default-102016.png`,
+`aup6-privacy-scrolled-default-102023.png`, `aup6-apps-default-102029.png`.
+`uiautomator dump` confirmed the five privacy sections in the new order plus
+"Nada sale de tu teléfono." and the source footer after scrolling.
+
+**Limits.** The 200% font scale and the full branch device matrix were not run:
+changing the font scale would modify a system setting, which this task forbids.
+They remain pending for the independent final verifier, so this is **not** a
+device/visual PASS. Authored lines: **189** (115 additions + 74 deletions,
+including the new 45-line test), inside the ~200–230 forecast and below the 400
+advisory.
+
+**Commit:** `2f8ffb9` refactor(android): make the privacy screen concise and
+local-first (source, test, strings and README). Detailed RED/GREEN output and
+screenshot paths are in the local, git-ignored
+`odd/tasks/android-ux-polish-aup6-report.md`. Not accepted yet.
