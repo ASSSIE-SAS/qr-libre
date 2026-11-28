@@ -46,18 +46,33 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.asssie.qrlibre.R
 import co.asssie.qrlibre.bluetooth.CaptureBroadcaster
+import co.asssie.qrlibre.bluetooth.CaptureReceiver
+import co.asssie.qrlibre.bluetooth.bluetoothReceivePermissions
 import co.asssie.qrlibre.bluetooth.bluetoothSendPermissions
+import co.asssie.qrlibre.bluetooth.hasBluetoothReceivePermissions
 import co.asssie.qrlibre.bluetooth.hasBluetoothSendPermissions
 import co.asssie.qrlibre.data.DeviceRole
+import co.asssie.qrlibre.data.PairedPeer
 import co.asssie.qrlibre.data.PairingStore
+import co.asssie.qrlibre.pairing.CaptureMessage
 import co.asssie.qrlibre.pairing.PairingPayload
 import co.asssie.qrlibre.pairing.PairingStatus
 import co.asssie.qrlibre.pairing.PairingSummary
+import co.asssie.qrlibre.pairing.SpeakerConnection
+import co.asssie.qrlibre.pairing.SpeakerUiState
+import co.asssie.qrlibre.pairing.decodePairingPayload
 import co.asssie.qrlibre.pairing.encode
+import co.asssie.qrlibre.pairing.encodeBase64Url
 import co.asssie.qrlibre.pairing.pairingQrMatrix
 import co.asssie.qrlibre.pairing.pairingSummary
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /** The QR is rasterised once per payload; 1024px keeps the modules sharp. */
 private const val QR_PIXELS = 1024
@@ -72,14 +87,60 @@ internal fun PairingScreen(onBack: () -> Unit) {
     // Android 12+ asks for Bluetooth at runtime. Capture still works without
     // it; only the forward to the speaker stays off.
     var bluetoothGranted by remember { mutableStateOf(hasBluetoothSendPermissions(context)) }
+    var receiveGranted by remember { mutableStateOf(hasBluetoothReceivePermissions(context)) }
     val bluetoothPermissions = bluetoothSendPermissions
+    val receivePermissions = bluetoothReceivePermissions
     val requestBluetooth = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
     ) {
         bluetoothGranted = hasBluetoothSendPermissions(context)
         reconcileBluetooth(context)
     }
-    LaunchedEffect(role, bluetoothGranted) { reconcileBluetooth(context) }
+    val requestReceiveBluetooth = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        receiveGranted = hasBluetoothReceivePermissions(context)
+        CaptureReceiver.get(context).refresh()
+    }
+
+    // The scanner activity owns the camera permission prompt. The result is
+    // checked against the pairing codec; an unknown code saves nothing.
+    var scanError by remember { mutableStateOf(false) }
+    val scanOptions = remember(context) {
+        ScanOptions()
+            .setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            .setPrompt(context.getString(R.string.pairing_scan))
+            .setBeepEnabled(false)
+            .setOrientationLocked(false)
+    }
+    val scan = rememberLauncherForActivityResult(ScanContract()) { result ->
+        val contents = result.contents
+        if (contents != null) {
+            val decoded = decodePairingPayload(contents)
+            if (decoded == null) {
+                scanError = true
+            } else {
+                val receiver = CaptureReceiver.get(context)
+                store.savePeer(
+                    PairedPeer(
+                        name = decoded.deviceName,
+                        secretBase64Url = encodeBase64Url(decoded.secret),
+                        serviceUuid = decoded.serviceUuid,
+                    ),
+                )
+                peer = store.peer()
+                scanError = false
+                receiver.forgetLastMessage()
+                receiver.refresh()
+            }
+        }
+    }
+
+    val receiverState by CaptureReceiver.get(context).state.collectAsStateWithLifecycle()
+    LaunchedEffect(role, bluetoothGranted, receiveGranted) {
+        reconcileBluetooth(context)
+        CaptureReceiver.get(context).refresh()
+    }
 
     // Minted once per capture role and persisted by the store, so a rotation,
     // a recomposition or a role round-trip reuses the same secret. The speaker
@@ -154,6 +215,7 @@ internal fun PairingScreen(onBack: () -> Unit) {
             val onUnpair = {
                 store.clearPeer()
                 peer = null
+                CaptureReceiver.get(context).refresh()
             }
             when (role) {
                 DeviceRole.CAPTURE -> CaptureSection(
@@ -167,7 +229,26 @@ internal fun PairingScreen(onBack: () -> Unit) {
                     },
                 )
 
-                DeviceRole.SPEAKER -> SpeakerSection(summary, onUnpair)
+                DeviceRole.SPEAKER -> SpeakerSection(
+                    summary = summary,
+                    receiverState = receiverState,
+                    scanError = scanError,
+                    bluetoothNeedsPermission =
+                        receivePermissions.isNotEmpty() && !receiveGranted,
+                    onRequestBluetooth = {
+                        requestReceiveBluetooth.launch(receivePermissions.toTypedArray())
+                    },
+                    onScan = {
+                        scanError = false
+                        try {
+                            scan.launch(scanOptions)
+                        } catch (_: Exception) {
+                            // No scanner activity to handle the request.
+                            scanError = true
+                        }
+                    },
+                    onUnpair = onUnpair,
+                )
             }
         }
     }
@@ -256,7 +337,10 @@ private fun CaptureSection(
     }
     if (bluetoothNeedsPermission) {
         Spacer(Modifier.height(12.dp))
-        BluetoothPermissionCard(onRequestBluetooth)
+        BluetoothPermissionCard(
+            bodyText = stringResource(R.string.pairing_bluetooth_permission_body),
+            onRequestBluetooth = onRequestBluetooth,
+        )
     }
     if (payload == null) return
 
@@ -295,17 +379,32 @@ private fun CaptureSection(
 }
 
 @Composable
-private fun SpeakerSection(summary: PairingSummary, onUnpair: () -> Unit) {
+private fun SpeakerSection(
+    summary: PairingSummary,
+    receiverState: SpeakerUiState,
+    scanError: Boolean,
+    bluetoothNeedsPermission: Boolean,
+    onRequestBluetooth: () -> Unit,
+    onScan: () -> Unit,
+    onUnpair: () -> Unit,
+) {
     PairingStatusLine(summary)
     if (summary.canUnpair) {
         Spacer(Modifier.height(10.dp))
         UnpairButton(onUnpair)
     }
+    if (bluetoothNeedsPermission) {
+        Spacer(Modifier.height(12.dp))
+        BluetoothPermissionCard(
+            bodyText = stringResource(R.string.pairing_speaker_permission_body),
+            onRequestBluetooth = onRequestBluetooth,
+        )
+    }
     Spacer(Modifier.height(12.dp))
-    // The scanner is not wired in this version. Keeping the button visible but
-    // disabled shows the shape of the flow without claiming it works.
+    SpeakerLinkLine(receiverState.connection)
+    Spacer(Modifier.height(10.dp))
     Button(
-        onClick = {},
+        onClick = onScan,
         enabled = summary.scanEnabled,
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -315,12 +414,138 @@ private fun SpeakerSection(summary: PairingSummary, onUnpair: () -> Unit) {
         )
     }
     Text(
-        text = stringResource(R.string.pairing_scan_next_version),
+        text = stringResource(R.string.pairing_scan_hint),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 6.dp),
     )
+    if (scanError) {
+        Text(
+            text = stringResource(R.string.pairing_scan_invalid),
+            style = MaterialTheme.typography.bodySmall,
+            color = QrLibreColors.DangerText,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+        Text(
+            text = stringResource(R.string.pairing_speaker_android_11),
+            style = MaterialTheme.typography.bodySmall,
+            color = QrLibreColors.DangerText,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+    if (summary.paired) {
+        Spacer(Modifier.height(16.dp))
+        SpeakerLastMessage(receiverState)
+        if (receiverState.droppedFrames > 0) {
+            Text(
+                text = stringResource(
+                    R.string.pairing_speaker_dropped,
+                    receiverState.droppedFrames,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+    Text(
+        text = stringResource(R.string.pairing_speaker_open_notice),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 16.dp),
+    )
 }
+
+/** One line for the live link, with the colour the rest of the app uses. */
+@Composable
+private fun SpeakerLinkLine(connection: SpeakerConnection) {
+    val text = when (connection) {
+        SpeakerConnection.IDLE -> stringResource(R.string.pairing_speaker_link_idle)
+        SpeakerConnection.CONNECTING -> stringResource(R.string.pairing_speaker_link_connecting)
+        SpeakerConnection.CONNECTED -> stringResource(R.string.pairing_speaker_link_connected)
+        SpeakerConnection.DISCONNECTED -> stringResource(R.string.pairing_speaker_link_disconnected)
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = when (connection) {
+            SpeakerConnection.CONNECTED -> MaterialTheme.colorScheme.primary
+            SpeakerConnection.DISCONNECTED -> QrLibreColors.DangerText
+            SpeakerConnection.IDLE,
+            SpeakerConnection.CONNECTING,
+            -> MaterialTheme.colorScheme.onSurfaceVariant
+        },
+    )
+}
+
+/**
+ * The last frame that passed signature verification. An unverified frame never
+ * reaches this card; the dropped counter below it is the only trace it leaves.
+ */
+@Composable
+private fun SpeakerLastMessage(receiverState: SpeakerUiState) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.pairing_speaker_last_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            val message = receiverState.lastMessage
+            if (message == null) {
+                Text(
+                    text = stringResource(R.string.pairing_speaker_no_message),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                SpeakerMessageBody(message)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpeakerMessageBody(message: CaptureMessage) {
+    Text(
+        text = stringResource(
+            R.string.pairing_speaker_last_meta,
+            message.app,
+            speakerTime(message.epochMs),
+        ),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (message.title.isNotBlank()) {
+        Text(
+            text = message.title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+    if (message.body.isNotBlank()) {
+        Text(
+            text = message.body,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+private fun speakerTime(epochMs: Long): String =
+    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(epochMs))
 
 @Composable
 private fun PairingStatusLine(summary: PairingSummary) {
@@ -355,7 +580,10 @@ private fun UnpairButton(onClick: () -> Unit) {
  * keep capturing; it only turns on the sender, so the copy says so.
  */
 @Composable
-private fun BluetoothPermissionCard(onRequestBluetooth: () -> Unit) {
+private fun BluetoothPermissionCard(
+    bodyText: String,
+    onRequestBluetooth: () -> Unit,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -374,7 +602,7 @@ private fun BluetoothPermissionCard(onRequestBluetooth: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = stringResource(R.string.pairing_bluetooth_permission_body),
+                text = bodyText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

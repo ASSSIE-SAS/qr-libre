@@ -23,7 +23,7 @@
     <string name="permission_missing_headline">Falta un permiso</string>
     <string name="permission_grant_action">Dar acceso</string>
     <string name="voice_test">Probar la voz</string>
-    <string name="voice_no_auto">La voz solo lee una frase de prueba. La app no anuncia avisos automáticamente.</string>
+    <string name="voice_no_auto">La voz lee una frase de prueba y, en el teléfono que suena, los avisos verificados que llegan.</string>
     <string name="history_empty_title">Todavía no hay avisos</string>
     <string name="history_choose_apps">Elegir apps</string>
 
@@ -57,12 +57,26 @@
     <string name="pairing_bluetooth_permission_body">Para enviar los avisos al teléfono que suena, QR Libre necesita anunciarse y conectarse por Bluetooth. Sin este permiso los avisos se siguen guardando aquí; solo se dejan de enviar.</string>
     <string name="pairing_bluetooth_permission_action">Permitir Bluetooth</string>
 
+    <string name="pairing_speaker_permission_body">Para buscar y recibir los avisos del teléfono que captura, QR Libre necesita escanear y conectarse por Bluetooth. Mientras no lo permitas, este teléfono no puede sonar.</string>
+
     <string name="pairing_qr_label">Código QR de emparejamiento</string>
     <string name="pairing_qr_name">Nombre en el código: %1$s</string>
     <string name="pairing_qr_hint">El otro teléfono lo escanea una vez. El código solo se muestra en esta pantalla y no se envía a ningún servidor.</string>
     <string name="pairing_scan">Escanear QR</string>
-    <string name="pairing_scan_next_version">Disponible en la próxima versión</string>
+    <string name="pairing_scan_hint">Apunta al código del teléfono que captura. Solo necesitas escanearlo una vez.</string>
+    <string name="pairing_scan_invalid">Ese código no es de QR Libre. No se guardó nada.</string>
+    <string name="pairing_speaker_android_11">En Android 11 o menor, esta versión no puede emparejar por QR: el sistema exige un permiso de ubicación que QR Libre no pide. La captura sigue funcionando.</string>
     <string name="pairing_unpair">Desemparejar</string>
+
+    <string name="pairing_speaker_last_title">Último aviso</string>
+    <string name="pairing_speaker_last_meta">%1$s · %2$s</string>
+    <string name="pairing_speaker_no_message">Todavía no llegó ningún aviso verificado.</string>
+    <string name="pairing_speaker_dropped">Descartados por firma o formato inválido: %1$d</string>
+    <string name="pairing_speaker_open_notice">Este teléfono suena solo mientras QR Libre está abierto. Si sales de la app o la cierras, deja de recibir avisos.</string>
+    <string name="pairing_speaker_link_idle">Sin conexión.</string>
+    <string name="pairing_speaker_link_connecting">Buscando al teléfono que captura…</string>
+    <string name="pairing_speaker_link_connected">Conectado. Escuchando avisos.</string>
+    <string name="pairing_speaker_link_disconnected">Desconectado. Reintentando…</string>
 
     <string name="apps_headline">Apps que quieres registrar</string>
     <plurals name="apps_selected_summary">

@@ -42,7 +42,7 @@ class PairingStateTest {
     }
 
     @Test
-    fun speakerUnpairedOffersTheScanActionButCannotStartYet() {
+    fun speakerUnpairedOffersTheScanActionAndCanStartIt() {
         val summary = pairingSummary(DeviceRole.SPEAKER, peer = null)
 
         assertEquals(PairingStatus.SPEAKER_UNPAIRED, summary.status)
@@ -52,15 +52,12 @@ class PairingStateTest {
         assertFalse(summary.canUnpair)
         assertFalse("the speaker never shows the QR", summary.showsQr)
         assertTrue("the speaker is the role that scans", summary.showsScanAction)
-        assertFalse(
-            "the scanner is not shipped in this version, so the button stays disabled",
+        assertTrue(
+            "the scanner ships with the speaker role, so the button is live",
             summary.scanEnabled,
         )
         assertFalse(canStartScanning(DeviceRole.CAPTURE))
-        assertFalse(
-            "P4 flips this to true for the speaker; this version does not scan",
-            canStartScanning(DeviceRole.SPEAKER),
-        )
+        assertTrue(canStartScanning(DeviceRole.SPEAKER))
     }
 
     @Test
@@ -73,7 +70,7 @@ class PairingStateTest {
         assertTrue(summary.canUnpair)
         assertFalse(summary.showsQr)
         assertTrue(summary.showsScanAction)
-        assertFalse(summary.scanEnabled)
+        assertTrue(summary.scanEnabled)
     }
 
     @Test

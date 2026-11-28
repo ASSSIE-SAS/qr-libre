@@ -53,7 +53,7 @@ Nada más.
 - [ ] **P2** Rol y estado de emparejamiento persistidos; pantalla de ajustes con
       "Este teléfono captura" / "Este teléfono suena" y "Desemparejar".
 - [ ] **P3** Emisor: GATT server, anuncio, envío firmado al capturar.
-- [ ] **P4** Receptor: escáner QR, conexión, verificación HMAC, voz.
+- [x] **P4** Receptor: escáner QR, conexión, verificación HMAC, voz.
 - [ ] **P5** Validación con dos teléfonos reales.
 
 ## Criterios

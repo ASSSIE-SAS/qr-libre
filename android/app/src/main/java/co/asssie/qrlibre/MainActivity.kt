@@ -9,12 +9,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import co.asssie.qrlibre.bluetooth.CaptureReceiver
 import co.asssie.qrlibre.notifications.ListenerConnection
 import co.asssie.qrlibre.notifications.NotificationAccess
+import co.asssie.qrlibre.pairing.CaptureMessage
+import co.asssie.qrlibre.pairing.spokenText
 import co.asssie.qrlibre.ui.QrLibreApp
 import co.asssie.qrlibre.ui.QrLibreTheme
 import java.util.Locale
@@ -41,6 +46,22 @@ class MainActivity : ComponentActivity() {
             QrLibreTheme {
                 val listenerConnected by
                     ListenerConnection.connected.collectAsStateWithLifecycle()
+                // The speaker link lives while this activity is visible. A new
+                // verified frame is announced once; rememberSaveable keeps a
+                // rotation from replaying the same notice.
+                val speakerState by
+                    CaptureReceiver.get(this@MainActivity).state.collectAsStateWithLifecycle()
+                val incoming = speakerState.lastMessage
+                var spokenKey by rememberSaveable { mutableStateOf("") }
+                LaunchedEffect(incoming?.let { "${it.id}:${it.epochMs}" }) {
+                    val message = incoming ?: return@LaunchedEffect
+                    // Row ids can be reused after the capture history is
+                    // cleared, so the key includes the capture timestamp.
+                    val key = "${message.id}:${message.epochMs}"
+                    if (key == spokenKey) return@LaunchedEffect
+                    spokenKey = key
+                    speakReceived(message)
+                }
                 QrLibreApp(
                     notificationAccess = notificationAccess,
                     listenerConnected = listenerConnected,
@@ -50,6 +71,17 @@ class MainActivity : ComponentActivity() {
                     onOpenNotificationSettings = ::openNotificationSettings,
                 )
             }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // In-app only: the receiver starts with the visible app and stops in
+        // onStop. No background service keeps the old phone listening.
+        try {
+            CaptureReceiver.get(this).start()
+        } catch (_: Exception) {
+            // Bluetooth is optional; capture must still work without it.
         }
     }
 
@@ -63,7 +95,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        // Leaving the app (Home, another app) should not keep speaking.
+        // Leaving the app (Home, another app) stops the speaker link and the
+        // voice. The speaker only works while QR Libre stays open.
+        try {
+            CaptureReceiver.get(this).stop()
+        } catch (_: Exception) {
+            // Shutting down Bluetooth can fail without affecting capture.
+        }
         tts?.stop()
         super.onStop()
     }
@@ -120,6 +158,29 @@ class MainActivity : ComponentActivity() {
             null,
             UTTERANCE_ID,
         )
+        if (result == TextToSpeech.ERROR) {
+            ttsMessage = getString(R.string.voice_error)
+        }
+    }
+
+    /**
+     * Speaks one verified notice. When the engine is not ready the caller has
+     * already shown the message on the pairing screen, so nothing is lost; the
+     * app just stays silent.
+     */
+    private fun speakReceived(message: CaptureMessage) {
+        val engine = tts
+        if (engine == null || !ttsReady) return
+        val result = try {
+            engine.speak(
+                spokenText(message),
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "$UTTERANCE_ID-${message.id}",
+            )
+        } catch (_: Exception) {
+            TextToSpeech.ERROR
+        }
         if (result == TextToSpeech.ERROR) {
             ttsMessage = getString(R.string.voice_error)
         }

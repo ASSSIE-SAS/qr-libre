@@ -24,9 +24,9 @@ data class PairingSummary(
     val peerName: String?,
     /** The capture phone shows the emitter QR; the speaker never does. */
     val showsQr: Boolean,
-    /** The speaker screen offers the scan action (disabled until P4). */
+    /** The speaker screen offers the scan action; the capture phone never does. */
     val showsScanAction: Boolean,
-    /** Whether the scan action can run in this build. False until P4. */
+    /** Whether the scan action can run in this build. */
     val scanEnabled: Boolean,
 ) {
     val paired: Boolean get() = peerName != null
@@ -87,11 +87,10 @@ fun peerOnFirstConnection(
 private const val FALLBACK_PEER_NAME = "Dispositivo"
 
 /**
- * The scanner ships in P4 together with the camera permission. Only the
- * speaker role scans, so this version answers false for both roles and the
- * button stays visible but disabled. P4 returns `role == DeviceRole.SPEAKER`.
+ * The scanner ships with the speaker role and the camera permission. Only the
+ * speaker scans; the capture phone is the one that displays the code.
  */
-private const val SCANNER_SHIPPED = false
+private const val SCANNER_SHIPPED = true
 
 fun canStartScanning(role: DeviceRole): Boolean =
     SCANNER_SHIPPED && role == DeviceRole.SPEAKER
