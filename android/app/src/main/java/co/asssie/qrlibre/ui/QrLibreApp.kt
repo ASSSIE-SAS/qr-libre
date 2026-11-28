@@ -140,7 +140,7 @@ fun QrLibreApp(
                         onOpenNotificationSettings = onOpenNotificationSettings,
                         onOpenApps = { tab = 1 },
                     )
-                    1 -> AppsScreen()
+                    1 -> AppsScreen(imeVisible = imeVisible)
                     else -> PrivacyScreen()
                 }
             }

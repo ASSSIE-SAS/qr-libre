@@ -51,10 +51,11 @@ payment was confirmed.
   instead of a fixed height; navigation items keep a 48dp minimum touch target;
   landscape three-button navigation bars and display cutouts are respected on
   the left/right edges, including the bottom bar; the bottom bar yields its
-  space to the keyboard while the app search field is focused and returns with
-  the same tab and list state. Danger copy uses a dedicated token with at least
-  4.5:1 contrast on the dark surfaces, while the filled error color stays
-  `#EB3131` for future error containers.
+  space to the keyboard while the app search field is focused and the Apps
+  header/summary collapse so the filtered list stays scrollable, then everything
+  returns with the same tab, query and list state. Danger copy uses a dedicated
+  token with at least 4.5:1 contrast on the dark surfaces, while the filled
+  error color stays `#EB3131` for future error containers.
 - **Privacidad**: local-first. The screen opens with where the data stays, then
   reads, limits, deletion and the absence of an account, ads or tracking. The
   sections are borderless and divided instead of repeated cards; it closes with
