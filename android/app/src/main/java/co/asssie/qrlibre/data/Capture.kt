@@ -7,4 +7,5 @@ data class Capture(
     val title: String,
     val body: String,
     val epochMs: Long,
+    val verdict: Verdict? = null,
 )

@@ -14,6 +14,7 @@ class CaptureExportTest {
         title: String = "Aviso",
         body: String = "Cuerpo",
         epochMs: Long = 1_700_000_000_000L,
+        verdict: Verdict? = null,
     ) = Capture(
         id = 1L,
         packageName = packageName,
@@ -21,6 +22,7 @@ class CaptureExportTest {
         title = title,
         body = body,
         epochMs = epochMs,
+        verdict = verdict,
     )
 
     @Test
@@ -46,14 +48,49 @@ class CaptureExportTest {
             "  {\"package\":\"co.test\",\"app\":\"App\"," +
             "\"title\":\"Dijo \\\"hola\\\" \\\\ fin\"," +
             "\"body\":\"Línea 1\\nLínea 2\\ttab\"," +
-            "\"epoch_ms\":1700000000000}\n" +
+            "\"epoch_ms\":1700000000000," +
+            "\"verdict\":null}\n" +
             "]"
         assertEquals(expected, json)
 
-        val keys = listOf("\"package\"", "\"app\"", "\"title\"", "\"body\"", "\"epoch_ms\"")
+        val keys = listOf(
+            "\"package\"",
+            "\"app\"",
+            "\"title\"",
+            "\"body\"",
+            "\"epoch_ms\"",
+            "\"verdict\"",
+        )
         val positions = keys.map { json.indexOf(it) }
         assertTrue("every key must be present", positions.all { it >= 0 })
         assertEquals("keys must stay in the documented order", positions.sorted(), positions)
+    }
+
+    @Test
+    fun paymentVerdictIsSerialisedAsWireValueAfterEpochMs() {
+        val json = exportCaptures(listOf(capture(verdict = Verdict.PAYMENT)))
+
+        assertTrue(json.contains("\"verdict\":\"payment\""))
+        assertTrue(
+            "verdict follows epoch_ms",
+            json.indexOf("\"epoch_ms\"") < json.indexOf("\"verdict\""),
+        )
+    }
+
+    @Test
+    fun notPaymentVerdictIsSerialisedAsWireValue() {
+        val json = exportCaptures(listOf(capture(verdict = Verdict.NOT_PAYMENT)))
+
+        assertTrue(json.contains("\"verdict\":\"not_payment\""))
+        assertFalse(json.contains("\"verdict\":\"payment\""))
+    }
+
+    @Test
+    fun missingVerdictIsJsonNull() {
+        val json = exportCaptures(listOf(capture(verdict = null)))
+
+        assertTrue(json.contains("\"verdict\":null"))
+        assertFalse(json.contains("\"verdict\":\""))
     }
 
     @Test

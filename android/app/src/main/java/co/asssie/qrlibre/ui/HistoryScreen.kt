@@ -70,6 +70,7 @@ import co.asssie.qrlibre.R
 import co.asssie.qrlibre.data.Capture
 import co.asssie.qrlibre.data.CaptureEvents
 import co.asssie.qrlibre.data.CapturesDb
+import co.asssie.qrlibre.data.Verdict
 import co.asssie.qrlibre.data.localDayRange
 import co.asssie.qrlibre.data.millisUntilNextLocalMidnight
 import co.asssie.qrlibre.notifications.ListenerUiState
@@ -176,7 +177,19 @@ internal fun HistoryScreen(
     BackHandler(enabled = openCapture != null) { openCapture = null }
     val opened = openCapture
     if (opened != null) {
-        CaptureDetailScreen(capture = opened, onBack = { openCapture = null })
+        CaptureDetailScreen(
+            capture = opened,
+            onBack = { openCapture = null },
+            onSetVerdict = { verdict ->
+                // Show the owner's tap immediately and persist it; the list
+                // reloads after the database write notifies.
+                openCapture = opened.copy(verdict = verdict)
+                scope.launch {
+                    withContext(Dispatchers.IO) { db.setVerdict(opened.id, verdict) }
+                    CaptureEvents.notifyChanged()
+                }
+            },
+        )
         return
     }
 
@@ -662,6 +675,22 @@ private fun CaptureCard(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            when (capture.verdict) {
+                Verdict.PAYMENT -> Text(
+                    text = stringResource(R.string.verdict_marker_payment),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = QrLibreColors.Lime,
+                )
+
+                Verdict.NOT_PAYMENT -> Text(
+                    text = stringResource(R.string.verdict_marker_not_payment),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                null -> Unit
             }
             if (capture.title.isNotEmpty()) {
                 Text(

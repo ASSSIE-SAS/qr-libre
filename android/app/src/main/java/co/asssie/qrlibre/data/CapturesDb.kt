@@ -17,7 +17,8 @@ class CapturesDb private constructor(context: Context) :
                 app TEXT NOT NULL,
                 title TEXT NOT NULL,
                 body TEXT NOT NULL,
-                epoch_ms INTEGER NOT NULL
+                epoch_ms INTEGER NOT NULL,
+                verdict TEXT
             )
             """.trimIndent(),
         )
@@ -25,7 +26,11 @@ class CapturesDb private constructor(context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Version 1 is the first schema. A future migration belongs here.
+        // Version 2 adds the owner's classification. Existing rows keep their
+        // data and get a null verdict; the table is never dropped.
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE captures ADD COLUMN verdict TEXT")
+        }
     }
 
     /** Returns the new row id, or -1 when the insert failed. */
@@ -51,7 +56,7 @@ class CapturesDb private constructor(context: Context) :
         val captures = mutableListOf<Capture>()
         readableDatabase.query(
             "captures",
-            arrayOf("id", "`package`", "app", "title", "body", "epoch_ms"),
+            arrayOf("id", "`package`", "app", "title", "body", "epoch_ms", "verdict"),
             null,
             null,
             null,
@@ -67,10 +72,19 @@ class CapturesDb private constructor(context: Context) :
                     title = cursor.getString(3),
                     body = cursor.getString(4),
                     epochMs = cursor.getLong(5),
+                    verdict = if (cursor.isNull(6)) null else Verdict.fromWire(cursor.getString(6)),
                 )
             }
         }
         return captures
+    }
+
+    /** Stores the owner's classification, or clears it when [verdict] is null. */
+    fun setVerdict(id: Long, verdict: Verdict?) {
+        val values = ContentValues().apply {
+            if (verdict == null) putNull("verdict") else put("verdict", verdict.wire)
+        }
+        writableDatabase.update("captures", values, "id = ?", arrayOf(id.toString()))
     }
 
     /**
@@ -92,7 +106,7 @@ class CapturesDb private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "qr_libre.db"
-        private const val DB_VERSION = 1
+        private const val DB_VERSION = 2
         private const val DEFAULT_LIMIT = 500
 
         @Volatile

@@ -64,6 +64,12 @@
     <string name="capture_detail_copy">Copiar texto</string>
     <string name="capture_detail_copy_hint">Al copiar, el texto queda en el portapapeles y puedes pegarlo en otra app. En Android moderno, otras apps en segundo plano por lo general no lo leen.</string>
     <string name="capture_detail_copied">Texto copiado.</string>
+    <string name="capture_verdict_label">Tu clasificación</string>
+    <string name="capture_verdict_payment">Es un pago</string>
+    <string name="capture_verdict_not_payment">No es un pago</string>
+    <string name="capture_verdict_hint">Según tu criterio, no una confirmación del banco. La app no confirma pagos. Toca la opción marcada para quitarla.</string>
+    <string name="verdict_marker_payment">Pago</string>
+    <string name="verdict_marker_not_payment">No es pago</string>
 
     <string name="voice_title">Leer en voz alta</string>
     <string name="voice_explanation">Una frase de prueba para confirmar que la voz funciona.</string>

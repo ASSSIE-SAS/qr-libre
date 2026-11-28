@@ -9,10 +9,11 @@ import java.util.Locale
  *
  * The order is the order given: [CapturesDb.recentCaptures] already returns the
  * newest capture first. Each object keeps the same key order so two exports of
- * the same data are byte-identical. Strings are escaped as JSON requires while
- * every other character, accents and emoji included, is written verbatim. The
- * body is data: its line breaks and blank lines survive as escaped characters,
- * never as separators.
+ * the same data are byte-identical. The verdict follows `epoch_ms` and is the
+ * wire value (`payment`, `not_payment`) or a JSON null when unset. Strings are
+ * escaped as JSON requires while every other character, accents and emoji
+ * included, is written verbatim. The body is data: its line breaks and blank
+ * lines survive as escaped characters, never as separators.
  */
 fun exportCaptures(captures: List<Capture>): String {
     if (captures.isEmpty()) return "[]"
@@ -26,7 +27,8 @@ fun exportCaptures(captures: List<Capture>): String {
             "\"app\":${jsonString(capture.app)}," +
             "\"title\":${jsonString(capture.title)}," +
             "\"body\":${jsonString(capture.body)}," +
-            "\"epoch_ms\":${capture.epochMs}" +
+            "\"epoch_ms\":${capture.epochMs}," +
+            "\"verdict\":${jsonVerdict(capture.verdict)}" +
             "}"
     }
 }
@@ -36,6 +38,10 @@ fun exportFileName(nowMs: Long): String {
     val day = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(nowMs))
     return "qr-libre-avisos-$day.json"
 }
+
+/** The verdict token: a quoted wire value or a bare JSON null. */
+private fun jsonVerdict(verdict: Verdict?): String =
+    if (verdict == null) "null" else jsonString(verdict.wire)
 
 private fun jsonString(value: String): String {
     val out = StringBuilder(value.length + 2)
