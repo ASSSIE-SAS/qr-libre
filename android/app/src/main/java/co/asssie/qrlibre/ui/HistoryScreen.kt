@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,6 +53,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -238,7 +242,7 @@ internal fun HistoryScreen(
                             .fillMaxWidth()
                             .padding(top = 4.dp),
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error,
+                            contentColor = QrLibreColors.DangerText,
                         ),
                     ) {
                         Text(stringResource(R.string.history_clear))
@@ -396,9 +400,21 @@ private fun SetupCard(
     }
 }
 
-/** Compact active summary; the count is inline and never larger than titleLarge. */
+/** Compact active summary; the count and suffix wrap instead of clipping. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ActiveSummary(todayCount: Long?, selectedApps: Int) {
+    val countText = todayCount?.toString() ?: "—"
+    val suffix = stringResource(R.string.hero_captured_suffix)
+    val appsText = pluralStringResource(R.plurals.hero_apps_count, selectedApps, selectedApps)
+    // One merged accessibility node: TalkBack reads the status, the count and
+    // the app count in a single pass instead of disconnected fragments.
+    val spokenSummary = stringResource(
+        R.string.hero_active_summary,
+        countText,
+        suffix,
+        appsText,
+    )
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
@@ -409,45 +425,47 @@ private fun ActiveSummary(todayCount: Long?, selectedApps: Int) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 14.dp),
+                .padding(horizontal = 18.dp, vertical = 14.dp)
+                .clearAndSetSemantics { contentDescription = spokenSummary },
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.hero_listening),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.weight(1f))
-                Text(
-                    // An em dash means "not known yet": the count is never
-                    // reported as a confirmed zero before the SQL read.
-                    text = todayCount?.toString() ?: "—",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = stringResource(R.string.hero_captured_suffix),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.hero_listening),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        // An em dash means "not known yet": the count is never
+                        // reported as a confirmed zero before the SQL read.
+                        text = countText,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = suffix,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Text(
-                text = pluralStringResource(
-                    R.plurals.hero_apps_count,
-                    selectedApps,
-                    selectedApps,
-                ),
+                text = appsText,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -523,7 +541,7 @@ private fun VoiceTest(ready: Boolean, message: String?, onSpeak: () -> Unit) {
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+                color = QrLibreColors.DangerText,
             )
         } else if (!ready) {
             Text(

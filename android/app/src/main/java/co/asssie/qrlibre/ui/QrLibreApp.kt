@@ -15,12 +15,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
@@ -39,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -72,6 +76,11 @@ fun QrLibreApp(
 ) {
     var tab by rememberSaveable { mutableStateOf(0) }
     val context = LocalContext.current
+    val density = LocalDensity.current
+    // The keyboard is measured in pixels; any positive IME inset means the
+    // software keyboard is showing and the bottom bar should yield its space
+    // to the app list without touching the selected tab.
+    val imeVisible = WindowInsets.ime.getBottom(density) > 0
     // SelectedApps notifies SelectionEvents centrally, so read the count keyed
     // by that version instead of snapshotting the preferences once.
     val selectionVersion by SelectionEvents.version.collectAsStateWithLifecycle()
@@ -125,7 +134,9 @@ fun QrLibreApp(
                 }
             }
 
-            BottomBar(tab = tab, onSelect = { tab = it })
+            if (!imeVisible) {
+                BottomBar(tab = tab, onSelect = { tab = it })
+            }
         }
     }
 }
@@ -144,16 +155,15 @@ private fun BottomBar(tab: Int, onSelect: (Int) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp),
+                .heightIn(min = 64.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             NavItems.forEachIndexed { index, item ->
                 NavBarItem(
                     item = item,
                     selected = tab == index,
                     onClick = { onSelect(index) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -174,13 +184,16 @@ private fun NavBarItem(
         MaterialTheme.colorScheme.onSurfaceVariant
     }
     Column(
-        modifier = modifier.selectable(
-            selected = selected,
-            onClick = onClick,
-            role = Role.Tab,
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-        ),
+        modifier = modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.Tab,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            )
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

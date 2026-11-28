@@ -15,6 +15,7 @@
     <string name="hero_connecting">Conectando con el sistema…</string>
     <string name="hero_connecting_body">El permiso está activo, pero el sistema todavía no ha conectado el servicio de avisos. Suele tardar un momento; si no cambia, revisa los ajustes.</string>
     <string name="hero_captured_suffix">avisos capturados hoy</string>
+    <string name="hero_active_summary">Escuchando. %1$s %2$s. %3$s.</string>
     <plurals name="hero_apps_count">
         <item quantity="one">%1$d app</item>
         <item quantity="other">%1$d apps</item>

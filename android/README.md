@@ -47,6 +47,12 @@ payment was confirmed.
 - **Apps**: headed "Apps que quieres registrar", with launcher apps, icon, label
   and a checkbox. The selection is a `Set<String>` in the `qr_libre_settings`
   preferences. A search field appears when the list has more than 12 apps.
+- **Accesibilidad**: app rows grow with the font scale and allow two label lines
+  instead of a fixed height; navigation items keep a 48dp minimum touch target;
+  the bottom bar yields its space to the keyboard while the app search field is
+  focused and returns with the same tab and list state. Danger copy uses a
+  dedicated token with at least 4.5:1 contrast on the dark surfaces, while the
+  filled error color stays `#EB3131` for future error containers.
 - **Privacidad**: what it reads, where it stays, how to delete it, and what it
   does not do.
 - **Leer en voz alta**: a `TextToSpeech` engine initialised by `MainActivity`
@@ -144,6 +150,7 @@ android/
     ListenerConnectionTest.kt listener binding signal
   app/src/test/java/co/asssie/qrlibre/ui/
     HistoryPresentationTest.kt first-run and voice visibility policy
+    ContrastTest.kt         real palette contrast on the dark surfaces
   app/src/test/java/co/asssie/qrlibre/data/
     CaptureCopyTest.kt       verbatim clipboard payload
     DayWindowTest.kt         local-day boundaries and midnight delay
@@ -166,8 +173,10 @@ input.
 
 - No device or emulator was available while building this. The logic is
   covered by unit tests for `normalizeNotificationText`, the listener state, the
-  history visibility policy and the clipboard payload; install, notification
-  capture, detail navigation and the clipboard are unverified on hardware.
+  history visibility policy, the clipboard payload and the real palette
+  contrast; install, notification capture, detail navigation, font-scale
+  wrapping, IME behavior, touch targets and the clipboard are unverified on
+  hardware.
 - A notification update posts again and can create a second row. There is no
   deduplication key yet.
 - The history screen loads the newest 500 rows. The table keeps the rest until
