@@ -10,6 +10,7 @@
 
     <string name="history_label_today">HOY</string>
     <string name="history_headline">Tus avisos</string>
+    <string name="history_note">Son notificaciones guardadas, no confirmaciones de pago.</string>
     <string name="hero_listening">Escuchando</string>
     <string name="hero_connecting">Conectando con el sistema…</string>
     <string name="hero_connecting_body">El permiso está activo, pero el sistema todavía no ha conectado el servicio de avisos. Suele tardar un momento; si no cambia, revisa los ajustes.</string>
@@ -23,10 +24,11 @@
     <string name="permission_missing_headline">Falta un permiso</string>
     <string name="permission_grant_action">Dar acceso</string>
     <string name="voice_test">Probar la voz</string>
+    <string name="voice_no_auto">La voz solo lee una frase de prueba. La app no anuncia avisos automáticamente.</string>
     <string name="history_empty_title">Todavía no hay avisos</string>
     <string name="history_choose_apps">Elegir apps</string>
 
-    <string name="apps_headline">Qué escuchar</string>
+    <string name="apps_headline">Apps que quieres registrar</string>
     <plurals name="apps_selected_summary">
         <item quantity="one">%1$d app seleccionada</item>
         <item quantity="other">%1$d apps seleccionadas</item>

@@ -14,24 +14,32 @@ payment was confirmed.
 - **Historial** separates three signals: notification access, the system
   listener binding and a non-empty app selection. "Escuchando" appears only when
   all three hold; otherwise the status card shows a missing permission,
-  "Ninguna app seleccionada" or "Conectando con el sistema…". The selected-app
-  count follows changes made on the Apps tab.
+  "Apps que quieres registrar" or "Conectando con el sistema…". On a fresh
+  install the screen leads with one compact setup card and a single primary
+  action ("Dar acceso" or "Elegir apps"); the today count is a compact inline
+  summary only once capture is active. The selected-app count follows changes
+  made on the Apps tab.
 - `QrLibreNotificationListener` reads `EXTRA_TITLE`, `EXTRA_TEXT`,
   `EXTRA_BIG_TEXT` and `EXTRA_SUB_TEXT` from notifications posted by the
   selected packages only. Its own package is skipped.
 - `CapturesDb` (`SQLiteOpenHelper`, no ORM) stores
   `package`, `app`, `title`, `body` and `epoch_ms` in `qr_libre.db`.
 - **Historial**: newest first, with app label, local time, title and body.
-  "Vaciar historial" asks for confirmation and deletes every row.
-- **Apps**: launcher apps with icon, label and a checkbox. The selection is a
-  `Set<String>` in the `qr_libre_settings` preferences. A search field appears
-  when the list has more than 12 apps.
+  A caption states that these are stored notifications, not payment
+  confirmations. Saved rows stay visible when permission is revoked, no app is
+  selected or the listener is connecting; only the empty-history billboard is
+  limited to the active state. "Vaciar historial" asks for confirmation and
+  deletes every row.
+- **Apps**: headed "Apps que quieres registrar", with launcher apps, icon, label
+  and a checkbox. The selection is a `Set<String>` in the `qr_libre_settings`
+  preferences. A search field appears when the list has more than 12 apps.
 - **Privacidad**: what it reads, where it stays, how to delete it, and what it
   does not do.
 - **Leer en voz alta**: a `TextToSpeech` engine initialised by `MainActivity`
-  speaks one fixed Spanish sentence. A failed engine shows a message; speech
-  stops when the app leaves the foreground and the engine is shut down in
-  `onDestroy`.
+  speaks one fixed Spanish sentence. It is a manual sample shown only when
+  capture is active; the app does not announce notifications automatically. A
+  failed engine shows a message; speech stops when the app leaves the
+  foreground and the engine is shut down in `onDestroy`.
 
 ## Requirements
 
@@ -98,7 +106,8 @@ android/
   app/src/main/java/co/asssie/qrlibre/
     MainActivity.kt          tabs, permission state, TextToSpeech lifecycle
     ui/QrLibreApp.kt         app shell, tab row, listener status
-    ui/HistoryScreen.kt      status card, voice card, capture list
+    ui/HistoryScreen.kt      status card, history note, voice sample, capture list
+    ui/HistoryPresentation.kt first-run and voice visibility policy
     ui/AppsScreen.kt         app picker and search
     ui/PrivacyScreen.kt      privacy copy
     ui/Components.kt         shared empty-state card
@@ -117,6 +126,8 @@ android/
     NotificationTextTest.kt  normalizeNotificationText
     ListenerStatusTest.kt    permission/apps/connection precedence
     ListenerConnectionTest.kt listener binding signal
+  app/src/test/java/co/asssie/qrlibre/ui/
+    HistoryPresentationTest.kt first-run and voice visibility policy
 ```
 
 `normalizeNotificationText` is a pure function: it trims each line, collapses
@@ -135,8 +146,9 @@ input.
 ## Limits of this version
 
 - No device or emulator was available while building this. The logic is
-  covered only by unit tests for `normalizeNotificationText`; install and
-  notification capture are unverified on hardware.
+  covered by unit tests for `normalizeNotificationText`, the listener state and
+  the history visibility policy; install and notification capture are
+  unverified on hardware.
 - A notification update posts again and can create a second row. There is no
   deduplication key yet.
 - The history screen loads the newest 500 rows. The table keeps the rest until

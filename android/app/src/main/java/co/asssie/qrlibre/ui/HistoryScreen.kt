@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -84,6 +82,12 @@ internal fun HistoryScreen(
     val scope = rememberCoroutineScope()
     var confirmClear by remember { mutableStateOf(false) }
     val list = captures
+    val presentation = remember(status, list) {
+        resolveHistoryPresentation(
+            status = status,
+            hasCaptures = !list.isNullOrEmpty(),
+        )
+    }
     val todayCount = remember(list) {
         list.orEmpty().count { capture -> isToday(capture.epochMs) }
     }
@@ -107,6 +111,11 @@ internal fun HistoryScreen(
                     style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
+                Text(
+                    text = stringResource(R.string.history_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 
@@ -120,12 +129,8 @@ internal fun HistoryScreen(
             )
         }
 
-        item {
-            VoiceTest(ready = ttsReady, message = ttsMessage, onSpeak = onSpeak)
-        }
-
-        when {
-            list == null -> item {
+        if (list == null) {
+            item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -135,8 +140,8 @@ internal fun HistoryScreen(
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
-            list.isEmpty() -> item { EmptyHistory(onOpenApps = onOpenApps) }
-            else -> {
+        } else {
+            if (presentation.showCaptures) {
                 items(list, key = { capture -> capture.id }) { capture ->
                     CaptureCard(capture = capture, modifier = Modifier.animateItem())
                 }
@@ -153,6 +158,14 @@ internal fun HistoryScreen(
                         Text(stringResource(R.string.history_clear))
                     }
                 }
+            } else if (presentation.showEmptyHistory) {
+                item { EmptyHistory(onOpenApps = onOpenApps) }
+            }
+        }
+
+        if (presentation.showVoiceTest) {
+            item {
+                VoiceTest(ready = ttsReady, message = ttsMessage, onSpeak = onSpeak)
             }
         }
     }
@@ -193,46 +206,15 @@ private fun HeroCard(
     onOpenNotificationSettings: () -> Unit,
 ) {
     when (status) {
-        ListenerUiState.PERMISSION_MISSING -> Card(
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.permission_missing_headline),
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Text(
-                    text = stringResource(R.string.permission_missing),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Button(
-                    onClick = onOpenNotificationSettings,
-                    modifier = Modifier.padding(top = 6.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.onPrimary,
-                        contentColor = MaterialTheme.colorScheme.primary,
-                    ),
-                ) {
-                    Text(stringResource(R.string.permission_grant_action))
-                }
-            }
-        }
+        ListenerUiState.PERMISSION_MISSING -> PermissionCard(
+            onOpenNotificationSettings = onOpenNotificationSettings,
+        )
 
-        ListenerUiState.NO_APPS -> StatusCard(
-            title = stringResource(R.string.hero_no_apps),
+        ListenerUiState.NO_APPS -> SetupCard(
+            title = stringResource(R.string.apps_headline),
             body = stringResource(R.string.apps_explanation),
             actionLabel = stringResource(R.string.hero_no_apps_action),
             onAction = onOpenApps,
-            titleColor = MaterialTheme.colorScheme.tertiary,
         )
 
         ListenerUiState.CONNECTING -> StatusCard(
@@ -240,69 +222,60 @@ private fun HeroCard(
             body = stringResource(R.string.hero_connecting_body),
             actionLabel = stringResource(R.string.permission_review_settings),
             onAction = onOpenNotificationSettings,
-            titleColor = MaterialTheme.colorScheme.onSurface,
         )
 
-        ListenerUiState.ACTIVE -> Card(
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ),
+        ListenerUiState.ACTIVE -> ActiveSummary(
+            todayCount = todayCount,
+            selectedApps = selectedApps,
+        )
+    }
+}
+
+/** Compact permission card: the single primary action is the system grant. */
+@Composable
+private fun PermissionCard(onOpenNotificationSettings: () -> Unit) {
+    Card(
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 22.dp, vertical = 24.dp),
+            Text(
+                text = stringResource(R.string.permission_missing_headline),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.permission_missing),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Button(
+                onClick = onOpenNotificationSettings,
+                modifier = Modifier.padding(top = 4.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.onPrimary,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.hero_listening),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = todayCount.toString(),
-                    style = MaterialTheme.typography.displayLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = stringResource(R.string.hero_captured_suffix),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.hero_apps_count,
-                        selectedApps,
-                        selectedApps,
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                Text(stringResource(R.string.permission_grant_action))
             }
         }
     }
 }
 
-/** A plain surface card with one text action, used by NO_APPS and CONNECTING. */
+/** Compact first-run card with one primary setup action. */
 @Composable
-private fun StatusCard(
+private fun SetupCard(
     title: String,
     body: String,
     actionLabel: String,
     onAction: () -> Unit,
-    titleColor: Color,
 ) {
     Card(
         shape = MaterialTheme.shapes.large,
@@ -314,17 +287,115 @@ private fun StatusCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 22.dp, vertical = 20.dp),
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(
+                onClick = onAction,
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                Text(actionLabel)
+            }
+        }
+    }
+}
+
+/** Compact active summary; the count is inline and never larger than titleLarge. */
+@Composable
+private fun ActiveSummary(todayCount: Int, selectedApps: Int) {
+    Card(
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.hero_listening),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = todayCount.toString(),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.hero_captured_suffix),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(
+                text = pluralStringResource(
+                    R.plurals.hero_apps_count,
+                    selectedApps,
+                    selectedApps,
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** A plain surface card with one text action, used by CONNECTING. */
+@Composable
+private fun StatusCard(
+    title: String,
+    body: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+) {
+    Card(
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
-                color = titleColor,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = body,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             TextButton(
@@ -355,6 +426,11 @@ private fun VoiceTest(ready: Boolean, message: String?, onSpeak: () -> Unit) {
                 style = MaterialTheme.typography.labelLarge,
             )
         }
+        Text(
+            text = stringResource(R.string.voice_no_auto),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         if (message != null) {
             Text(
                 text = message,
