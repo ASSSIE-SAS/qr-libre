@@ -205,6 +205,60 @@ class PairingStateTest {
     }
 
     @Test
+    fun noStoredPeerHasNothingToRefresh() {
+        assertNull(
+            "without a peer there is nothing to rename",
+            refreshedPeerName(existing = null, remoteName = "Barra"),
+        )
+    }
+
+    @Test
+    fun aFallbackNameIsReplacedByTheRealRemoteName() {
+        val refreshed = refreshedPeerName(
+            existing = peer.copy(name = FALLBACK_PEER_NAME),
+            remoteName = "  Barra  ",
+        )
+
+        assertEquals("Barra", refreshed?.name)
+        assertEquals(
+            "the refresh must only change the name",
+            peer,
+            refreshed?.copy(name = peer.name),
+        )
+        assertEquals(peer.secretBase64Url, refreshed?.secretBase64Url)
+        assertEquals(peer.serviceUuid, refreshed?.serviceUuid)
+    }
+
+    @Test
+    fun aRealNameIsNeverRenamedByADifferentRealName() {
+        assertNull(
+            "a user-visible pairing must not be renamed after the fact",
+            refreshedPeerName(existing = peer, remoteName = "Otra barra"),
+        )
+    }
+
+    @Test
+    fun aBlankRemoteNameDoesNotRefreshTheFallback() {
+        for (name in listOf(null, "", " ", "\t\n ")) {
+            assertNull(
+                "a blank remote name leaves the fallback in place for $name",
+                refreshedPeerName(existing = peer.copy(name = FALLBACK_PEER_NAME), remoteName = name),
+            )
+        }
+    }
+
+    @Test
+    fun theFallbackNeverReplacesTheFallback() {
+        assertNull(
+            "the generic label is not an improvement over itself",
+            refreshedPeerName(
+                existing = peer.copy(name = FALLBACK_PEER_NAME),
+                remoteName = FALLBACK_PEER_NAME,
+            ),
+        )
+    }
+
+    @Test
     fun theRecordedPeerKeepsTheLocalSecretAndUuidVerbatim() {
         val recorded = peerOnFirstConnection(
             existing = null,

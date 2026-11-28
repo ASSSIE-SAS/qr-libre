@@ -26,6 +26,7 @@ import co.asssie.qrlibre.data.PairingStore
 import co.asssie.qrlibre.pairing.CaptureMessage
 import co.asssie.qrlibre.pairing.encodeBase64Url
 import co.asssie.qrlibre.pairing.peerOnFirstConnection
+import co.asssie.qrlibre.pairing.refreshedPeerName
 import co.asssie.qrlibre.pairing.shouldAdvertise
 import co.asssie.qrlibre.pairing.shouldSend
 import co.asssie.qrlibre.pairing.signedFrame
@@ -200,6 +201,7 @@ class CaptureBroadcaster private constructor(context: Context) {
                             // is attached, and reopen the door on disconnect.
                             stopAdvertisingLocked()
                             recordFirstPeerLocked(device)
+                            refreshPeerNameLocked(device)
                             debug("peer connected")
                         }
 
@@ -346,6 +348,27 @@ class CaptureBroadcaster private constructor(context: Context) {
         } catch (error: Exception) {
             // A missing permission or an unreadable name must not break the link.
             debug("peer record failed: ${error.javaClass.simpleName}")
+        }
+    }
+
+    /**
+     * Upgrades a peer stored under the generic fallback label once the remote
+     * name is readable, so the pairing screen stops showing "Dispositivo". Only
+     * the name is rewritten; an existing real name is left alone.
+     *
+     * Neither the remote name nor the secret reaches the log.
+     */
+    private fun refreshPeerNameLocked(device: BluetoothDevice?) {
+        try {
+            if (device == null) return
+            if (store.role() != DeviceRole.CAPTURE) return
+            val peer = store.peer() ?: return
+            val refreshed = refreshedPeerName(peer, device.name) ?: return
+            store.savePeer(refreshed)
+            debug("peer name refreshed")
+        } catch (error: Exception) {
+            // An unreadable name must not break the link; try again next time.
+            debug("peer refresh failed: ${error.javaClass.simpleName}")
         }
     }
 
