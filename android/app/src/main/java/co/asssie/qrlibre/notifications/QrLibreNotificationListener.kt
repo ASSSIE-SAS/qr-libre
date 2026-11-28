@@ -17,6 +17,23 @@ import co.asssie.qrlibre.data.SelectedApps
  */
 class QrLibreNotificationListener : NotificationListenerService() {
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        ListenerConnection.onListenerConnected()
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        ListenerConnection.onListenerDisconnected()
+    }
+
+    override fun onDestroy() {
+        // The process may outlive this service instance. Clear the signal here
+        // too, so a killed or unbound listener cannot leave a stale "connected".
+        ListenerConnection.onListenerDisconnected()
+        super.onDestroy()
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         val posted = sbn ?: return
         val sourcePackage = posted.packageName ?: return

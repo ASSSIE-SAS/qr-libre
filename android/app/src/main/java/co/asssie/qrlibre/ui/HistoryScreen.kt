@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -54,7 +55,7 @@ import co.asssie.qrlibre.R
 import co.asssie.qrlibre.data.Capture
 import co.asssie.qrlibre.data.CaptureEvents
 import co.asssie.qrlibre.data.CapturesDb
-import co.asssie.qrlibre.data.SelectedApps
+import co.asssie.qrlibre.notifications.ListenerUiState
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -65,7 +66,8 @@ import kotlinx.coroutines.withContext
 
 @Composable
 internal fun HistoryScreen(
-    notificationAccess: Boolean,
+    status: ListenerUiState,
+    selectedApps: Int,
     ttsReady: Boolean,
     ttsMessage: String?,
     onSpeak: () -> Unit,
@@ -81,7 +83,6 @@ internal fun HistoryScreen(
     }
     val scope = rememberCoroutineScope()
     var confirmClear by remember { mutableStateOf(false) }
-    val selectedApps = remember { SelectedApps(context).selected().size }
     val list = captures
     val todayCount = remember(list) {
         list.orEmpty().count { capture -> isToday(capture.epochMs) }
@@ -111,9 +112,10 @@ internal fun HistoryScreen(
 
         item {
             HeroCard(
-                granted = notificationAccess,
+                status = status,
                 todayCount = todayCount,
                 selectedApps = selectedApps,
+                onOpenApps = onOpenApps,
                 onOpenNotificationSettings = onOpenNotificationSettings,
             )
         }
@@ -184,13 +186,14 @@ internal fun HistoryScreen(
 
 @Composable
 private fun HeroCard(
-    granted: Boolean,
+    status: ListenerUiState,
     todayCount: Int,
     selectedApps: Int,
+    onOpenApps: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
 ) {
-    if (!granted) {
-        Card(
+    when (status) {
+        ListenerUiState.PERMISSION_MISSING -> Card(
             shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -223,9 +226,84 @@ private fun HeroCard(
                 }
             }
         }
-        return
-    }
 
+        ListenerUiState.NO_APPS -> StatusCard(
+            title = stringResource(R.string.hero_no_apps),
+            body = stringResource(R.string.apps_explanation),
+            actionLabel = stringResource(R.string.hero_no_apps_action),
+            onAction = onOpenApps,
+            titleColor = MaterialTheme.colorScheme.tertiary,
+        )
+
+        ListenerUiState.CONNECTING -> StatusCard(
+            title = stringResource(R.string.hero_connecting),
+            body = stringResource(R.string.hero_connecting_body),
+            actionLabel = stringResource(R.string.permission_review_settings),
+            onAction = onOpenNotificationSettings,
+            titleColor = MaterialTheme.colorScheme.onSurface,
+        )
+
+        ListenerUiState.ACTIVE -> Card(
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 22.dp, vertical = 24.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.hero_listening),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = todayCount.toString(),
+                    style = MaterialTheme.typography.displayLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(R.string.hero_captured_suffix),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.hero_apps_count,
+                        selectedApps,
+                        selectedApps,
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
+
+/** A plain surface card with one text action, used by NO_APPS and CONNECTING. */
+@Composable
+private fun StatusCard(
+    title: String,
+    body: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+    titleColor: Color,
+) {
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
@@ -236,50 +314,26 @@ private fun HeroCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 22.dp, vertical = 24.dp),
+                .padding(horizontal = 22.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.hero_listening),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Spacer(Modifier.height(10.dp))
             Text(
-                text = todayCount.toString(),
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = titleColor,
             )
             Text(
-                text = stringResource(R.string.hero_captured_suffix),
+                text = body,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.height(16.dp))
-            if (selectedApps > 0) {
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.hero_apps_count,
-                        selectedApps,
-                        selectedApps,
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            } else {
-                Text(
-                    text = stringResource(R.string.hero_no_apps),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.tertiary,
-                )
+            TextButton(
+                onClick = onAction,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary,
+                ),
+            ) {
+                Text(actionLabel)
             }
         }
     }

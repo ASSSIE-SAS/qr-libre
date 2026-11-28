@@ -11,12 +11,15 @@
     <string name="history_label_today">HOY</string>
     <string name="history_headline">Tus avisos</string>
     <string name="hero_listening">Escuchando</string>
+    <string name="hero_connecting">Conectando con el sistema…</string>
+    <string name="hero_connecting_body">El permiso está activo, pero el sistema todavía no ha conectado el servicio de avisos. Suele tardar un momento; si no cambia, revisa los ajustes.</string>
     <string name="hero_captured_suffix">avisos capturados hoy</string>
     <plurals name="hero_apps_count">
         <item quantity="one">%1$d app</item>
         <item quantity="other">%1$d apps</item>
     </plurals>
     <string name="hero_no_apps">Ninguna app seleccionada</string>
+    <string name="hero_no_apps_action">Elegir apps</string>
     <string name="permission_missing_headline">Falta un permiso</string>
     <string name="permission_grant_action">Dar acceso</string>
     <string name="voice_test">Probar la voz</string>

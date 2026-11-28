@@ -11,6 +11,11 @@ payment was confirmed.
 
 - Detects whether notification access is enabled and links to the system
   setting when it is not.
+- **Historial** separates three signals: notification access, the system
+  listener binding and a non-empty app selection. "Escuchando" appears only when
+  all three hold; otherwise the status card shows a missing permission,
+  "Ninguna app seleccionada" or "Conectando con el sistema…". The selected-app
+  count follows changes made on the Apps tab.
 - `QrLibreNotificationListener` reads `EXTRA_TITLE`, `EXTRA_TEXT`,
   `EXTRA_BIG_TEXT` and `EXTRA_SUB_TEXT` from notifications posted by the
   selected packages only. Its own package is skipped.
@@ -92,8 +97,8 @@ android/
   gradle/wrapper/            pinned Gradle 8.9 wrapper
   app/src/main/java/co/asssie/qrlibre/
     MainActivity.kt          tabs, permission state, TextToSpeech lifecycle
-    ui/QrLibreApp.kt         app shell and tab row
-    ui/HistoryScreen.kt      permission card, voice card, capture list
+    ui/QrLibreApp.kt         app shell, tab row, listener status
+    ui/HistoryScreen.kt      status card, voice card, capture list
     ui/AppsScreen.kt         app picker and search
     ui/PrivacyScreen.kt      privacy copy
     ui/Components.kt         shared empty-state card
@@ -101,12 +106,17 @@ android/
     data/Capture.kt          row model
     data/CapturesDb.kt       SQLiteOpenHelper
     data/SelectedApps.kt     SharedPreferences set
+    data/SelectionEvents.kt  in-process selection change signal
     data/CaptureEvents.kt    in-process refresh signal
     notifications/QrLibreNotificationListener.kt
     notifications/NotificationText.kt
     notifications/NotificationAccess.kt
+    notifications/ListenerStatus.kt
+    notifications/ListenerConnection.kt
   app/src/test/java/co/asssie/qrlibre/notifications/
     NotificationTextTest.kt  normalizeNotificationText
+    ListenerStatusTest.kt    permission/apps/connection precedence
+    ListenerConnectionTest.kt listener binding signal
 ```
 
 `normalizeNotificationText` is a pure function: it trims each line, collapses

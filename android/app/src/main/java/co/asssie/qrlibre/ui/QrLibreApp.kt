@@ -38,12 +38,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.asssie.qrlibre.R
+import co.asssie.qrlibre.data.SelectedApps
+import co.asssie.qrlibre.data.SelectionEvents
+import co.asssie.qrlibre.notifications.resolveListenerUiState
 
 private data class NavItem(
     @StringRes val label: Int,
@@ -59,12 +64,27 @@ private val NavItems = listOf(
 @Composable
 fun QrLibreApp(
     notificationAccess: Boolean,
+    listenerConnected: Boolean,
     ttsReady: Boolean,
     ttsMessage: String?,
     onSpeak: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(0) }
+    val context = LocalContext.current
+    // SelectedApps notifies SelectionEvents centrally, so read the count keyed
+    // by that version instead of snapshotting the preferences once.
+    val selectionVersion by SelectionEvents.version.collectAsStateWithLifecycle()
+    val selectedApps = remember(selectionVersion) {
+        SelectedApps(context).selected().size
+    }
+    val listenerStatus = remember(notificationAccess, listenerConnected, selectedApps) {
+        resolveListenerUiState(
+            accessGranted = notificationAccess,
+            listenerConnected = listenerConnected,
+            selectedApps = selectedApps,
+        )
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -92,7 +112,8 @@ fun QrLibreApp(
             ) { index ->
                 when (index) {
                     0 -> HistoryScreen(
-                        notificationAccess = notificationAccess,
+                        status = listenerStatus,
+                        selectedApps = selectedApps,
                         ttsReady = ttsReady,
                         ttsMessage = ttsMessage,
                         onSpeak = onSpeak,

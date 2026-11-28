@@ -12,6 +12,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import co.asssie.qrlibre.notifications.ListenerConnection
 import co.asssie.qrlibre.notifications.NotificationAccess
 import co.asssie.qrlibre.ui.QrLibreApp
 import co.asssie.qrlibre.ui.QrLibreTheme
@@ -37,8 +39,11 @@ class MainActivity : ComponentActivity() {
         initTextToSpeech()
         setContent {
             QrLibreTheme {
+                val listenerConnected by
+                    ListenerConnection.connected.collectAsStateWithLifecycle()
                 QrLibreApp(
                     notificationAccess = notificationAccess,
+                    listenerConnected = listenerConnected,
                     ttsReady = ttsReady,
                     ttsMessage = ttsMessage,
                     onSpeak = ::speakSample,

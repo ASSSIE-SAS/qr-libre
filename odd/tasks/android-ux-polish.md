@@ -1,18 +1,21 @@
 # Android UX polish — preparation and work-unit plan
 
-**Status:** READY FOR PARENT REVIEW — NOT IMPLEMENTED
+**Status:** AUP-1 IMPLEMENTED — PENDING PARENT REVIEW; AUP-2..AUP-6 NOT STARTED
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
-**Artifact:** this file only (`odd/tasks/android-ux-polish.md`)
+**Artifact:** this file (`odd/tasks/android-ux-polish.md`)
 **Implementer:** DeepSeek (after the preflight decisions below)
 **Reviewers:** parent session for every task; independent final verifier after AUP-6
 
-This document is preparation only. No source file, test, Gradle file, README or
-design token was edited. No build, test run, device operation or device state
-change, commit, push, branch or subagent was performed. `git status --porcelain`
-was empty at inspection time. The only file produced by this work is this
-artifact.
+**History.** The preparation phase (committed as `d26db05`) edited no source
+file, test, Gradle file, README or design token and made no device operation.
+`git status --porcelain` was empty at inspection time and the only file the
+preparation produced was this artifact.
+
+**Current execution.** AUP-1 is implemented and committed locally; AUP-2 to
+AUP-6 are not started. Nothing has been pushed, merged or installed, and no
+device validation has been run. Implementation evidence is in §10.
 
 Technical prose is English. In-app copy is Spanish, quoted exactly where it is
 authorized.
@@ -23,6 +26,7 @@ This is the single authoritative checklist. Update it only when a task closes
 with its parent review and local work-unit commit; do not duplicate it.
 
 - [ ] **AUP-1** Truthful listener state (permission ≠ connected ≠ apps selected)
+      — implemented and locally committed; pending parent review
 - [ ] **AUP-2** First-run hierarchy and truthful history note
 - [ ] **AUP-3** Full capture detail with explicit, truthful copy
 - [ ] **AUP-4** Accurate today aggregate across the whole table
@@ -831,7 +835,9 @@ The output must not contain `android.permission.INTERNET`.
 | Clipboard privacy wording | Overclaiming insecurity | Say the user can paste elsewhere and that modern Android does not let background apps freely read the clipboard; no auto-copy |
 | Device checks not run during preparation | Visual regressions unproven | Device `ace242eb` remains connected; install/validation pending authorization; AUP-6 checkpoint plus independent verifier |
 
-## 8. Progress and next step
+## 8. Progress and next step (preparation record)
+
+_Kept as history; current AUP-1 results are in §10._
 
 **Done in this preparation**
 - Read the required skills and the actual Android sources, strings, Gradle
@@ -859,7 +865,12 @@ The output must not contain `android.permission.INTERNET`.
 ## 9. Skill resolution
 
 - **Loaded:** `/Users/erik/.agents/skills/work-unit-commits/SKILL.md` and
-  `/Users/erik/.agents/skills/impeccable/reference/product.md`.
+  `/Users/erik/.agents/skills/impeccable/reference/product.md` (preparation);
+  for AUP-1 also
+  `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/SKILL.md`
+  and
+  `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/writing-good-tests.md`
+  (paths injected by the parent).
 - **Project registry:** none found (no `AGENTS.md`, `CLAUDE.md`, `.agents`,
   `openspec` or `sdd*`). No SDD/OpenSpec artifacts exist for this repo.
 - **gentle-ai:** not installed (`which gentle-ai` empty). RDD status and
@@ -869,3 +880,46 @@ The output must not contain `android.permission.INTERNET`.
   available and no memory was written. Full mirror remains pending under the
   intended topic `odd/android-ux-polish/tasks`; do not save it to another
   project.
+
+## 10. Implementation log
+
+### AUP-1 — implemented, local commits only, pending parent review
+
+**TDD evidence (JUnit4 only, offline).** RED was observed before the real
+implementation with deliberately wrong skeletons, and it was behavioral, not a
+compile error: 7 focused tests ran, 5 failed on assertions —
+`expected:<PERMISSION_MISSING> but was:<ACTIVE>`,
+`expected:<NO_APPS> but was:<ACTIVE>` (three resolver tests), and two
+`assertTrue` failures for the connection signal. GREEN after implementing the
+resolver and the signal: 7/7 focused tests. Full verification:
+`./gradlew --offline testDebugUnitTest assembleDebug` → `BUILD SUCCESSFUL`,
+14/14 tests (`NotificationTextTest` 7, `ListenerStatusTest` 3,
+`ListenerConnectionTest` 4), 0 failures, 0 errors, 0 skipped; no compiler
+warnings; `aapt dump permissions` lists no `android.permission.INTERNET`.
+
+**What shipped**
+- `notifications/ListenerStatus.kt`: pure resolver with precedence missing
+  permission > zero/negative selection > connecting > active, and the
+  `ListenerUiState` enum.
+- `notifications/ListenerConnection.kt`: process-local `StateFlow<Boolean>`,
+  default `false`, no persisted "active" preference.
+- `notifications/QrLibreNotificationListener.kt`: `onListenerConnected`,
+  `onListenerDisconnected` and `onDestroy` keep the signal truthful (destruction
+  clears it); `super` is called; the notification capture path is unchanged.
+- `data/SelectionEvents.kt`: version signal emitted centrally from
+  `SelectedApps.setSelected`, which also skips no-op writes/emissions.
+- `MainActivity` collects the connection flow with
+  `collectAsStateWithLifecycle`; `QrLibreApp` reads the selected-app count keyed
+  by the selection version and computes the state.
+- `ui/HistoryScreen.kt`: `HeroCard` has four truthful branches; `hero_listening`
+  renders only in `ACTIVE`; saved rows are never gated by the status.
+- Strings `hero_connecting`, `hero_connecting_body`, `hero_no_apps_action` and
+  the README paragraph/layout rows.
+
+**Limits.** Service lifecycle timing and the visual result need the deferred
+device matrix (AUP-6); `onDestroy` clearing is verified by inspection, not by an
+automated test. Authored lines: **395** (345 additions + 50 deletions) across
+the source commit.
+
+**Commits:** `d26db05` docs(odd) plan; the AUP-1 source commit hash is recorded
+in the follow-up docs commit that accompanies it.
