@@ -1,6 +1,6 @@
 # Android UX polish — preparation and work-unit plan
 
-**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 IMPLEMENTED — PENDING PARENT REVIEW; AUP-5..AUP-6 NOT STARTED
+**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 ACCEPTED; AUP-5 IMPLEMENTED — PENDING PARENT REVIEW; AUP-6 NOT STARTED
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
@@ -13,12 +13,15 @@ file, test, Gradle file, README or design token and made no device operation.
 `git status --porcelain` was empty at inspection time and the only file the
 preparation produced was this artifact.
 
-**Current execution.** AUP-1, AUP-2 and AUP-3 are accepted by the parent after
-reading their actual diffs and rerunning the focused tests. AUP-4 is implemented
-and locally committed, pending parent review; AUP-5 and AUP-6 are not started.
-Nothing has been pushed, merged or installed, and no device validation has been
-run. Implementation evidence is in §10 and
-`odd/tasks/android-ux-polish-aup4-report.md`.
+**Current execution.** AUP-1, AUP-2, AUP-3 and AUP-4 are accepted by the
+parent after reading their actual diffs and rerunning the focused tests. AUP-4
+acceptance covers the diff and `DayWindowTest`; the SQL platform/runtime
+behavior is still explicitly pending and is not claimed as an executed runtime
+PASS. AUP-5 is implemented and locally committed, pending parent review; AUP-6
+is not started. Nothing has been pushed, merged or installed, and no device
+validation has been run. Implementation evidence is in §10 and
+`odd/tasks/android-ux-polish-aup5-report.md` (the AUP-4 report remains the
+record for that task).
 
 Technical prose is English. In-app copy is Spanish, quoted exactly where it is
 authorized.
@@ -45,10 +48,15 @@ with its parent review and local work-unit commit; do not duplicate it.
       `CaptureCopyTest`; implementation commit `a6e3573`, 22 total tests green.
       The primitive-fields copy helper (rather than a `Capture` object) is
       accepted as pure and used by the UI. Evidence in §10.
-- [ ] **AUP-4** Accurate today aggregate across the whole table
-      — implemented in `1c37349`; pending parent review. Evidence in §10 and
-      `odd/tasks/android-ux-polish-aup4-report.md`.
+- [x] **AUP-4** Accurate today aggregate across the whole table
+      — accepted by the parent after reading the actual diff and rerunning
+      `DayWindowTest`; implementation commit `1c37349`, 29 total tests green at
+      acceptance (`writer` run). The SQL platform/runtime behavior remains
+      explicitly pending (see §10), not accepted as a runtime PASS. Evidence in
+      §10 and `odd/tasks/android-ux-polish-aup4-report.md`.
 - [ ] **AUP-5** Large text, touch targets, keyboard and contrast
+      — implemented in `040be54`; pending parent review. Evidence in §10 and
+      `odd/tasks/android-ux-polish-aup5-report.md`.
 - [ ] **AUP-6** Compact local-first privacy; final visual/device validation
 
 ---
@@ -884,7 +892,7 @@ _Kept as history; current AUP-1 results are in §10._
 
 - **Loaded:** `/Users/erik/.agents/skills/work-unit-commits/SKILL.md` and
   `/Users/erik/.agents/skills/impeccable/reference/product.md` (preparation);
-  for AUP-1 through AUP-4 also
+  for AUP-1 through AUP-5 also
   `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/SKILL.md`
   and
   `/Users/erik/.cache/opencode/npm/git-superpowers-0958a5557860/1793134404581/node_modules/superpowers/skills/test-driven-development/writing-good-tests.md`
@@ -1116,7 +1124,7 @@ parent also accepted the copy helper taking primitive fields instead of a
 `Capture` object: it is pure and the UI uses the actual helper. The branch
 still needs the deferred device matrix before any PASS.
 
-### AUP-4 — implemented, local commit only, pending parent review
+### AUP-4 — accepted by the parent
 
 **TDD evidence (JUnit4 only, offline).** `data/DayWindow.kt` was first written
 as a deliberately wrong stub (`LocalDayRange(0, 0)` and a zero delay) after the
@@ -1182,4 +1190,85 @@ advisory.
 **Commit:** `1c37349` fix(android): count today's captures across the whole
 table (source, test and README). A following docs commit records this evidence;
 the detailed RED/GREEN output is in the local, git-ignored
-`odd/tasks/android-ux-polish-aup4-report.md`. Not accepted yet.
+`odd/tasks/android-ux-polish-aup4-report.md`.
+
+**Parent acceptance.** The parent read the actual AUP-4 diff and reran
+`./gradlew --offline testDebugUnitTest --tests "co.asssie.qrlibre.data.DayWindowTest"`
+→ focused PASS. The writer's full run was 29/29 tests green (7
+`NotificationTextTest`, 3 `ListenerStatusTest`, 4 `ListenerConnectionTest`, 3
+`HistoryPresentationTest`, 5 `CaptureCopyTest`, 7 `DayWindowTest`), recorded at
+`HEAD 6d612c1`. AUP-4 is accepted for its implemented code, tests and README.
+The SQL platform/runtime behavior (`SQLiteOpenHelper`, the actual `COUNT(*)`
+execution, the midnight timer, resume refresh and dynamic receiver) remains
+**explicitly pending**; it is not accepted or claimed as a runtime PASS. The
+branch still needs the deferred device matrix before any PASS.
+
+### AUP-5 — implemented, local commit only, pending parent review
+
+**TDD evidence (JUnit4 only, offline).** `ui/ContrastTest.kt` was written first
+against the real theme. To keep RED behavioral instead of a compile error,
+`QrLibreColorValues` and `QrLibreDarkColors` were introduced as a minimal
+skeleton with the old values and mappings (`onError = Text`,
+`onErrorContainer = Danger`, `DangerText = Danger`). Focused RED: 5 tests
+completed, 4 failed with `java.lang.AssertionError`:
+`onError on error must be at least 4.5:1, was 3.80:1`,
+`DangerText on Card must be at least 4.5:1, was 4.28:1`,
+`onErrorContainer on errorContainer must be at least 4.5:1, was 3.98:1`, and
+`onError must use the dark text intended for the filled danger surface
+expected:<4278913803> but was:<4294309104>`. GREEN after the palette fix:
+focused `ContrastTest` → `BUILD SUCCESSFUL`, 5/5 tests. Full verification after
+the layout, keyboard, strings and README edits:
+`./gradlew --offline testDebugUnitTest assembleDebug --rerun-tasks` →
+`BUILD SUCCESSFUL`, 41/41 tasks executed, 34/34 tests (29 prior +
+5 `ContrastTest`), 0 failures, 0 errors, 0 skipped; `aapt` lists no
+`android.permission.INTERNET`. The complete RED/GREEN output, contrast table
+and static checks are in `odd/tasks/android-ux-polish-aup5-report.md`.
+
+**What shipped**
+- `ui/AppsScreen.kt`: app rows use `heightIn(min = 56.dp)` with vertical
+  padding instead of a fixed 56dp height; labels wrap to `maxLines = 2` with
+  ellipsis beyond. The whole row stays `toggleable`, the `Switch` keeps
+  `onCheckedChange = null` (one callback), and divider/selection behavior is
+  unchanged.
+- `ui/QrLibreApp.kt`: bottom bar uses `heightIn(min = 64.dp)`, each item has
+  `defaultMinSize(minHeight = 48.dp)` plus vertical padding and no
+  `fillMaxHeight`; `selectable(role = Role.Tab)` and the 22dp icon remain.
+  `WindowInsets.ime.getBottom(density) > 0` hides only the bar while the
+  keyboard is visible; `imePadding()` stays and `tab` is untouched.
+- `ui/HistoryScreen.kt`: `ActiveSummary` uses a `FlowRow` so status and the
+  `todayCount` + suffix can wrap instead of clipping; the number has no
+  `maxLines`, and the count/apps copy is a single merged accessibility
+  description (`hero_active_summary`). The two visible danger call sites (clear
+  action and voice error) use `QrLibreColors.DangerText`. `CaptureDetail` and
+  the 4-line card preview are untouched, so the full detail remains readable.
+- `ui/Theme.kt`: pure ARGB `QrLibreColorValues` (`Long`) now backs every
+  `QrLibreColors` `Color`; `DangerText = #FF7A7A`, `onError = OnLime` and
+  `onErrorContainer = DangerText`; `error` stays `#EB3131`.
+- `res/values/strings.xml`: `hero_active_summary`
+  ("Escuchando. %1$s %2$s. %3$s.") for the merged semantics.
+- `android/README.md`: accessibility behavior, new test-map entry and the
+  unverified-on-hardware limitation.
+
+**Static evidence.** No `.height(56.dp)` or `.height(64.dp)` remains under
+`ui/`; `heightIn(min = 56.dp)`, `heightIn(min = 64.dp)` and
+`defaultMinSize(minHeight = 48.dp)` are present; `onCheckedChange = null` appears
+exactly once in `AppsScreen.kt`; `contrastRatio` appears only in the test
+source; `QrLibreColorValues` is referenced by both `Theme.kt` and
+`ContrastTest.kt`. No dependency, SDK, Gradle or Compose version changed.
+
+**Contrast.** `OnLime` on `Danger` = 4.70:1; `DangerText` on `Page` / `Card` /
+`Elevated` / `Divider` = 7.65 / 7.10 / 6.60 / 5.99:1; baseline `Text` and
+`Muted` remain 13.75:1 or higher / 5.92:1 or higher on those surfaces.
+
+**Limits.** The JUnit-only classpath cannot render Compose, so font-scale
+wrapping, the 48dp touch targets, the IME show/hide transition, TalkBack and
+the visual result are structural/static evidence only, not a visual PASS. They
+are deferred to the AUP-6 device matrix. Authored lines: **332** (257 additions
++ 75 deletions), above the ~190–230 forecast because the contrast suite and
+adaptive summary are included and no test/docs were removed; below the 400
+advisory.
+
+**Commit:** `040be54` fix(android): support large text and accessible contrast
+(source, test, strings and README). The detailed RED/GREEN output is in the
+local, git-ignored `odd/tasks/android-ux-polish-aup5-report.md`. Not accepted
+yet.
