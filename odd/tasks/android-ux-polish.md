@@ -1,6 +1,6 @@
 # Android UX polish — preparation and work-unit plan
 
-**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 ACCEPTED; AUP-5 CORRECTED — PENDING PARENT VISUAL REVIEW; AUP-6 IMPLEMENTED — PENDING PARENT REVIEW
+**Status:** AUP-1 ACCEPTED; AUP-2 ACCEPTED; AUP-3 ACCEPTED; AUP-4 ACCEPTED; AUP-5 REOPENED/FIXED — PENDING PARENT ACCEPTANCE; AUP-6 IMPLEMENTED — PENDING PARENT REVIEW
 **Repository:** `/Users/erik/Desktop/qr-libre`
 **Branch:** `feat/android-ux-polish`
 **Baseline commit:** `829e1f7 docs(android): note the design tokens and their source`
@@ -17,11 +17,12 @@ preparation produced was this artifact.
 parent after reading their actual diffs and rerunning the focused tests. AUP-4
 acceptance covers the diff and `DayWindowTest`; the SQL platform/runtime
 behavior is still explicitly pending and is not claimed as an executed runtime
-PASS. AUP-5 was implemented in `040be54`; the AUP-6 install visual review then
-found a real landscape safe-inset gap, so AUP-5 is reopened and corrected in
-`e6c798d` pending parent visual review. AUP-6 is implemented in `2f8ffb9` and
-remains pending parent review; the 200% font matrix is still pending. Nothing
-has been pushed or merged. Implementation evidence is in §10,
+PASS. AUP-5 was implemented in `040be54`, corrected for landscape side insets in
+`e6c798d`, and reopened again after the independent final verifier reproduced a
+blocking keyboard-open Apps-list defect; the chrome fix is `c030819` and awaits
+parent acceptance. AUP-6 is implemented in `2f8ffb9` and remains pending parent
+review; the 200% font matrix is still pending. Nothing has been pushed or
+merged. Implementation evidence is in §10,
 `odd/tasks/android-ux-polish-aup5-report.md` and
 `odd/tasks/android-ux-polish-aup6-report.md` (the AUP-4 report remains the record
 for that task).
@@ -58,10 +59,10 @@ with its parent review and local work-unit commit; do not duplicate it.
       explicitly pending (see §10), not accepted as a runtime PASS. Evidence in
       §10 and `odd/tasks/android-ux-polish-aup4-report.md`.
 - [ ] **AUP-5** Large text, touch targets, keyboard and contrast
-      — implemented in `040be54`; reopened after the AUP-6 install visual review
-      found a landscape left-inset overlap and corrected in `e6c798d`; pending
-      parent visual review. Evidence in §10 and
-      `odd/tasks/android-ux-polish-aup5-report.md`.
+      — implemented in `040be54`; landscape side inset corrected in `e6c798d`;
+      reopened after the independent final verifier found no usable Apps list
+      with the IME open and fixed in `c030819`; pending parent acceptance.
+      Evidence in §10 and `odd/tasks/android-ux-polish-aup5-report.md`.
 - [ ] **AUP-6** Compact local-first privacy; final visual/device validation
       — implemented in `2f8ffb9`; pending parent review and the independent
       verifier's large-font matrix. Evidence in §10 and
@@ -1211,7 +1212,7 @@ execution, the midnight timer, resume refresh and dynamic receiver) remains
 **explicitly pending**; it is not accepted or claimed as a runtime PASS. The
 branch still needs the deferred device matrix before any PASS.
 
-### AUP-5 — reopened and corrected, pending parent visual review
+### AUP-5 — reopened and fixed, pending parent acceptance
 
 **TDD evidence (JUnit4 only, offline).** `ui/ContrastTest.kt` was written first
 against the real theme. To keep RED behavioral instead of a compile error,
@@ -1317,6 +1318,71 @@ cutout behavior. Authored lines: **21** (17 additions + 4 deletions).
 errors, 0 skipped); `aapt` still lists no `android.permission.INTERNET`. The
 correction is pending the parent's visual review, and the AUP-6 200% font matrix
 remains pending. Not a final PASS.
+
+**Reopened correction — Apps chrome under the landscape IME.** The independent
+final verifier reproduced a blocking AUP-5 defect at 2400x1080 landscape and
+font scale 1.0: the IME started at y=529, the search field ended at y=495, and
+the fixed heading/description/summary left the weighted list with no visible
+row and no scrollable node. Hiding the bottom bar did not recover the fixed
+chrome height (report:
+`/private/var/folders/ff/hrsxp6x120z072qb2t7ccxq40000gp/T/opencode/qr-ux-independent-final.md`).
+
+**TDD evidence.** `ui/AppsChromePolicyTest.kt` was written first against a real
+production policy. A `FULL`-only skeleton compiled and failed behaviorally:
+4 tests completed, 3 failed with
+`imeWinsEvenOnTallViewportsAndLargeFont expected:<SEARCH_ONLY> but was:<FULL>`,
+`shortLandscapeUsesCompactChrome expected:<COMPACT> but was:<FULL>` and
+`largeFontFallsBackToCompactEvenInTallPortrait expected:<COMPACT> but was:<FULL>`.
+GREEN after `ui/AppsChromePolicy.kt`: focused suite 4/4, `BUILD SUCCESSFUL`.
+
+**What shipped.** The pure policy returns `SEARCH_ONLY` whenever the IME is
+visible, `COMPACT` below 360dp viewport height or from font scale 1.5, and
+`FULL` for ample portrait heights. `AppsScreen` consumes it with
+`BoxWithConstraints.maxHeight` and `LocalDensity.fontScale`; `QrLibreApp` passes
+the IME signal captured before `imePadding()` consumes the insets. `SEARCH_ONLY`
+hides the header and fixed summary, tightens the search top padding and keeps
+the filtered `LazyColumn` weighted and scrollable. `COMPACT` uses a compact
+title, omits the long description and moves `SelectionSummary` into a list
+footer. `FULL` keeps the original heading, description, search and summary.
+Query (`rememberSaveable`), selection/preferences and the single
+`Switch(onCheckedChange = null)` callback are unchanged; there is no nested
+vertical scroll, orientation lock or new dependency.
+
+**Device evidence.** The updated APK was installed with
+`adb -s ace242eb install -r` (data preserved; no permission, selected-app,
+font-scale, rotation or system-setting change). Device stayed in its existing
+landscape orientation (2400x1080, rotation 270). The Apps tab was opened, the
+search field focused, the harmless query `a` typed, and `dumpsys input_method`
+showed `mInputShown=true`. With the IME open, `uiautomator` showed
+`EditText "a" [185,91][2190,179]`, a scrollable list
+`[130,245][2190,529]`, and rows `AliExpress [317,305][2111,362]` and
+`Amazon compras [317,462][2111,519]`; after one swipe both rows were complete
+(`AliExpress [317,245][2111,284]`, `Amazon compras [317,384][2111,441]`). No
+switch was tapped. Closing the IME restored the compact header
+`[185,102][750,163]`, kept `EditText "a" [185,202][2190,300]`, restored the
+bottom tabs `[434,1010]`, `[1188,1010]`, `[1877,1010]` and enlarged the list to
+`[130,356][2190,901]`. The app was left on the History tab and no user DB,
+clipboard, permission, selection or unrelated app was touched.
+
+Screenshots: `aup5-apps-ime-landscape.png`,
+`aup5-apps-ime-scrolled.png` and `aup5-apps-query-restored.png` under
+`/private/var/folders/ff/hrsxp6x120z072qb2t7ccxq40000gp/T/opencode/`.
+
+**Verification.** `./gradlew --offline testDebugUnitTest assembleDebug` and the
+`--rerun-tasks` variant → `BUILD SUCCESSFUL`, 41/41 tasks executed, **40/40
+tests** (36 prior preserved + 4 `AppsChromePolicyTest`), 0 failures, 0 errors,
+0 skipped; `aapt` still has no `android.permission.INTERNET`. Authored lines:
+**241** (208 additions + 33 deletions).
+
+**Commit:** `c030819` fix(android): keep the apps list usable with the
+landscape keyboard.
+
+**Limits.** The 200% font path is covered only by the pure policy test
+(`fontScale = 2.0` → `COMPACT`); changing the phone font was not authorized, so
+this is not a fake 200% device PASS. The IME row/scroll evidence is manual
+UI-hierarchy and screenshot evidence, not an automated Compose layout test. The
+writer has no image input; hierarchy bounds and local pixel sampling were used
+for the GREEN claim. AUP-6 remains pending; this is not a final PASS.
 
 ### AUP-6 — implemented, local commit only, pending parent review
 
