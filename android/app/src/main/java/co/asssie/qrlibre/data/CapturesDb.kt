@@ -73,6 +73,19 @@ class CapturesDb private constructor(context: Context) :
         return captures
     }
 
+    /**
+     * Counts every row in [startMsInclusive, endMsExclusive), independent of
+     * the newest-500 display limit. Returns [Long], so a large table cannot
+     * overflow through an Int cast.
+     */
+    fun countCapturesBetween(startMsInclusive: Long, endMsExclusive: Long): Long =
+        readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM captures WHERE epoch_ms >= ? AND epoch_ms < ?",
+            arrayOf(startMsInclusive.toString(), endMsExclusive.toString()),
+        ).use { cursor ->
+            if (cursor.moveToFirst()) cursor.getLong(0) else 0L
+        }
+
     fun clear() {
         writableDatabase.delete("captures", null, null)
     }

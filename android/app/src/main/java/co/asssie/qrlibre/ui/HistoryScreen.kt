@@ -1,5 +1,9 @@
 package co.asssie.qrlibre.ui
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
@@ -33,6 +37,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,17 +56,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.asssie.qrlibre.R
 import co.asssie.qrlibre.data.Capture
 import co.asssie.qrlibre.data.CaptureEvents
 import co.asssie.qrlibre.data.CapturesDb
+import co.asssie.qrlibre.data.localDayRange
+import co.asssie.qrlibre.data.millisUntilNextLocalMidnight
 import co.asssie.qrlibre.notifications.ListenerUiState
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -79,9 +89,70 @@ internal fun HistoryScreen(
     val db = remember { CapturesDb.get(context) }
     val version by CaptureEvents.version.collectAsStateWithLifecycle()
     var captures by remember { mutableStateOf<List<Capture>?>(null) }
-    LaunchedEffect(version) {
-        captures = withContext(Dispatchers.IO) { db.recentCaptures() }
+    // Null means the total is not known yet (or the count read failed); the
+    // screen never presents an unread count as a confirmed zero.
+    var todayCount by remember { mutableStateOf<Long?>(null) }
+    // Bumped by a local midnight, a resume and a system time/time-zone change.
+    var dayTick by remember { mutableStateOf(0) }
+
+    LaunchedEffect(version, dayTick) {
+        val loaded = withContext(Dispatchers.IO) {
+            val rows = db.recentCaptures()
+            val range = localDayRange(System.currentTimeMillis())
+            val count = try {
+                db.countCapturesBetween(range.startMs, range.endMs)
+            } catch (_: Exception) {
+                // A failed count is unknown, not zero.
+                null
+            }
+            rows to count
+        }
+        captures = loaded.first
+        todayCount = loaded.second
     }
+
+    // In-process midnight refresh while the screen is composed. It restarts
+    // after every refresh, so a resume or a clock change recomputes the delay
+    // from the current time instead of keeping a mistimed sleep. The one-second
+    // guard keeps the timer from firing just before the boundary, and the
+    // coroutine is cancelled with the screen.
+    LaunchedEffect(dayTick) {
+        while (true) {
+            delay(millisUntilNextLocalMidnight(System.currentTimeMillis()) + 1_000L)
+            dayTick++
+        }
+    }
+
+    // Coming back from another app or settings may follow a manual clock or
+    // time-zone change while the app was backgrounded.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        dayTick++
+    }
+
+    // System time and time-zone changes are protected broadcasts. The receiver
+    // exists only while the screen is composed: registered at runtime,
+    // unregistered on dispose, with no manifest entry and no permission.
+    DisposableEffect(context) {
+        val timeReceiver = object : BroadcastReceiver() {
+            override fun onReceive(receiverContext: Context?, intent: Intent?) {
+                dayTick++
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+        }
+        ContextCompat.registerReceiver(
+            context,
+            timeReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        onDispose {
+            context.unregisterReceiver(timeReceiver)
+        }
+    }
+
     val scope = rememberCoroutineScope()
     var confirmClear by remember { mutableStateOf(false) }
     val list = captures
@@ -90,9 +161,6 @@ internal fun HistoryScreen(
             status = status,
             hasCaptures = !list.isNullOrEmpty(),
         )
-    }
-    val todayCount = remember(list) {
-        list.orEmpty().count { capture -> isToday(capture.epochMs) }
     }
     val listState = rememberLazyListState()
     var openCapture by remember { mutableStateOf<Capture?>(null) }
@@ -218,7 +286,7 @@ internal fun HistoryScreen(
 @Composable
 private fun HeroCard(
     status: ListenerUiState,
-    todayCount: Int,
+    todayCount: Long?,
     selectedApps: Int,
     onOpenApps: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
@@ -330,7 +398,7 @@ private fun SetupCard(
 
 /** Compact active summary; the count is inline and never larger than titleLarge. */
 @Composable
-private fun ActiveSummary(todayCount: Int, selectedApps: Int) {
+private fun ActiveSummary(todayCount: Long?, selectedApps: Int) {
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
@@ -359,7 +427,9 @@ private fun ActiveSummary(todayCount: Int, selectedApps: Int) {
                 )
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = todayCount.toString(),
+                    // An em dash means "not known yet": the count is never
+                    // reported as a confirmed zero before the SQL read.
+                    text = todayCount?.toString() ?: "—",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -567,13 +637,6 @@ private fun CaptureCard(
             }
         }
     }
-}
-
-private fun isToday(epochMs: Long): Boolean {
-    val now = Calendar.getInstance()
-    val then = Calendar.getInstance().apply { timeInMillis = epochMs }
-    return now.get(Calendar.YEAR) == then.get(Calendar.YEAR) &&
-        now.get(Calendar.DAY_OF_YEAR) == then.get(Calendar.DAY_OF_YEAR)
 }
 
 private fun formatTimestamp(epochMs: Long): String =

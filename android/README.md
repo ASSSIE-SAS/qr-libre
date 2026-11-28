@@ -29,7 +29,11 @@ payment was confirmed.
   confirmations. Saved rows stay visible when permission is revoked, no app is
   selected or the listener is connecting; only the empty-history billboard is
   limited to the active state. "Vaciar historial" asks for confirmation and
-  deletes every row.
+  deletes every row. Today's count is a `COUNT(*)` over the whole table in the
+  current local day (`epoch_ms >= local midnight` and `< next local midnight`),
+  so it does not share the 500-row list limit. It refreshes after local
+  midnight, on resume, and when the system time or time zone changes; while the
+  count is not read yet, the summary shows an unknown marker instead of a zero.
 - **Detalle del aviso**: tapping a card opens a full-height, scrollable detail
   with the complete title and body, the app label, the package name and the full
   local timestamp (`HH:mm:ss dd/MM/yyyy`). The list card remains a 4-line preview
@@ -142,6 +146,7 @@ android/
     HistoryPresentationTest.kt first-run and voice visibility policy
   app/src/test/java/co/asssie/qrlibre/data/
     CaptureCopyTest.kt       verbatim clipboard payload
+    DayWindowTest.kt         local-day boundaries and midnight delay
 ```
 
 `normalizeNotificationText` is a pure function: it trims each line, collapses
@@ -166,7 +171,9 @@ input.
 - A notification update posts again and can create a second row. There is no
   deduplication key yet.
 - The history screen loads the newest 500 rows. The table keeps the rest until
-  the user clears it.
+  the user clears it. Today's count is not limited to those rows; the boundary
+  logic is unit-tested, but the SQL count itself has no automated test because
+  the JUnit-only classpath cannot run `SQLiteOpenHelper`.
 - App labels come from `PackageManager`; a source whose package is not visible
   to the app falls back to the package name.
 - Debug APK only. No release signing or Play Store packaging.
