@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
@@ -25,7 +26,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // The app is dark only, so the system bars always need light icons even
+        // when the phone itself is in light mode. The scrim matches the page so
+        // devices that respect it do not show a mismatched band.
+        val pageScrim = 0xFF0E0E0E.toInt()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(pageScrim),
+            navigationBarStyle = SystemBarStyle.dark(pageScrim),
+        )
         initTextToSpeech()
         setContent {
             QrLibreTheme {
