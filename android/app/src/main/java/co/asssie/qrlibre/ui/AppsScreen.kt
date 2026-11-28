@@ -6,13 +6,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -69,7 +71,7 @@ private data class AppEntry(
 )
 
 @Composable
-internal fun AppsScreen() {
+internal fun AppsScreen(imeVisible: Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
     val preferences = remember { SelectedApps(context) }
     var apps by remember { mutableStateOf<List<AppEntry>?>(null) }
@@ -81,22 +83,47 @@ internal fun AppsScreen() {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Column(
+        BackHeader(
+            onBack = onBack,
+            modifier = Modifier.padding(start = 8.dp, end = 20.dp, top = 8.dp),
+        )
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 20.dp, top = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+                .weight(1f),
         ) {
-            Text(
-                text = stringResource(R.string.apps_headline),
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+            val density = LocalDensity.current
+            val chrome = resolveAppsChrome(
+                imeVisible = imeVisible,
+                viewportHeightDp = maxHeight.value,
+                fontScale = density.fontScale,
             )
-            Text(
-                text = stringResource(R.string.apps_explanation),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            AppsContent(
+                chrome = chrome,
+                apps = apps,
+                selected = selected,
+                query = query,
+                onQueryChange = { query = it },
+                onCheckedChange = { packageName, checked ->
+                    selected = preferences.setSelected(packageName, checked)
+                },
             )
+        }
+    }
+}
+
+@Composable
+private fun AppsContent(
+    chrome: AppsChrome,
+    apps: List<AppEntry>?,
+    selected: Set<String>,
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onCheckedChange: (String, Boolean) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (chrome != AppsChrome.SEARCH_ONLY) {
+            AppsHeader(compact = chrome == AppsChrome.COMPACT)
         }
 
         val loaded = apps
@@ -121,18 +148,19 @@ internal fun AppsScreen() {
             }
 
             else -> {
-                if (loaded.size > SEARCH_THRESHOLD) {
-                    SearchField(
-                        query = query,
-                        onQueryChange = { query = it },
-                    )
-                }
                 val filtered = remember(loaded, query) {
                     if (query.isBlank()) {
                         loaded
                     } else {
                         loaded.filter { it.label.contains(query, ignoreCase = true) }
                     }
+                }
+                if (loaded.size > SEARCH_THRESHOLD) {
+                    SearchField(
+                        query = query,
+                        onQueryChange = onQueryChange,
+                        tight = chrome == AppsChrome.SEARCH_ONLY,
+                    )
                 }
                 if (filtered.isEmpty()) {
                     Box(
@@ -144,12 +172,18 @@ internal fun AppsScreen() {
                     ) {
                         EmptyCard(stringResource(R.string.apps_no_matches))
                     }
+                    if (chrome == AppsChrome.COMPACT) {
+                        SelectionSummary(count = selected.size)
+                    }
                 } else {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 4.dp),
+                        contentPadding = PaddingValues(
+                            top = if (chrome == AppsChrome.SEARCH_ONLY) 4.dp else 8.dp,
+                            bottom = 4.dp,
+                        ),
                     ) {
                         itemsIndexed(
                             items = filtered,
@@ -160,26 +194,73 @@ internal fun AppsScreen() {
                                 checked = selected.contains(app.packageName),
                                 showDivider = index < filtered.lastIndex,
                                 onCheckedChange = { checked ->
-                                    selected = preferences.setSelected(app.packageName, checked)
+                                    onCheckedChange(app.packageName, checked)
                                 },
                             )
                         }
+                        if (chrome == AppsChrome.COMPACT) {
+                            item(key = "apps-selection-summary") {
+                                SelectionSummary(count = selected.size)
+                            }
+                        }
+                    }
+                    if (chrome == AppsChrome.FULL) {
+                        SelectionSummary(count = selected.size)
                     }
                 }
-                SelectionSummary(count = selected.size)
             }
         }
     }
 }
 
+/** Full chrome in portrait; compact mode drops the long description. */
 @Composable
-private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+private fun AppsHeader(compact: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = if (compact) 8.dp else 16.dp,
+            ),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 0.dp else 6.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.apps_headline),
+            style = if (compact) {
+                MaterialTheme.typography.titleMedium
+            } else {
+                MaterialTheme.typography.headlineLarge
+            },
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        if (!compact) {
+            Text(
+                text = stringResource(R.string.apps_explanation),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    tight: Boolean,
+) {
     TextField(
         value = query,
         onValueChange = onQueryChange,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 14.dp),
+            .padding(
+                start = 20.dp,
+                end = 20.dp,
+                top = if (tight) 4.dp else 14.dp,
+            ),
         placeholder = {
             Text(
                 text = stringResource(R.string.apps_search),
@@ -225,13 +306,13 @@ private fun AppRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .heightIn(min = 56.dp)
                 .toggleable(
                     value = checked,
                     role = Role.Switch,
                     onValueChange = onCheckedChange,
                 )
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (app.icon != null) {
@@ -264,7 +345,7 @@ private fun AppRow(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )

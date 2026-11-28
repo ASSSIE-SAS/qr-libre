@@ -18,26 +18,48 @@ import co.asssie.qrlibre.R
 /**
  * Tokens taken from the reference site's live stylesheet. Only the palette is
  * borrowed; no brand asset or copy comes from there.
+ *
+ * The ARGB constants are pure [Long] values so the JUnit contrast test can pin
+ * the real palette without a Compose or rendering dependency. Production
+ * constructs its [Color] values from this single source.
  */
-internal object QrLibreColors {
-    val Page = Color(0xFF0E0E0E)
-    val Card = Color(0xFF171717)
-    val Elevated = Color(0xFF1E1E1E)
-    val Divider = Color(0xFF262626)
-    val Lime = Color(0xFFCFFF2E)
-    val OnLime = Color(0xFF0B0B0B)
-    val Green = Color(0xFF00DF1A)
-    val Warning = Color(0xFFF6B60B)
-    val Danger = Color(0xFFEB3131)
-    val Text = Color(0xFFF5F4F0)
-    val Muted = Color(0xFFA2A2A1)
-    val SwitchOff = Color(0xFF3A3A3A)
+internal object QrLibreColorValues {
+    const val Page = 0xFF0E0E0EL
+    const val Card = 0xFF171717L
+    const val Elevated = 0xFF1E1E1EL
+    const val Divider = 0xFF262626L
+    const val Lime = 0xFFCFFF2EL
+    const val OnLime = 0xFF0B0B0BL
+    const val Green = 0xFF00DF1AL
+    const val Warning = 0xFFF6B60BL
+    const val Danger = 0xFFEB3131L
+    const val DangerText = 0xFFFF7A7AL
+    const val Text = 0xFFF5F4F0L
+    const val Muted = 0xFFA2A2A1L
+    const val SwitchOff = 0xFF3A3A3AL
 
     /**
      * Lime at 80% alpha for long technical text. Composited over #171717 this
      * lands near #A9D32C, roughly 9:1 contrast, so readability survives.
      */
-    val LimeText = Color(0xCCCFFF2E)
+    const val LimeText = 0xCCCFFF2EL
+}
+
+internal object QrLibreColors {
+    val Page = Color(QrLibreColorValues.Page)
+    val Card = Color(QrLibreColorValues.Card)
+    val Elevated = Color(QrLibreColorValues.Elevated)
+    val Divider = Color(QrLibreColorValues.Divider)
+    val Lime = Color(QrLibreColorValues.Lime)
+    val OnLime = Color(QrLibreColorValues.OnLime)
+    val Green = Color(QrLibreColorValues.Green)
+    val Warning = Color(QrLibreColorValues.Warning)
+    val Danger = Color(QrLibreColorValues.Danger)
+    val DangerText = Color(QrLibreColorValues.DangerText)
+    val Text = Color(QrLibreColorValues.Text)
+    val Muted = Color(QrLibreColorValues.Muted)
+    val SwitchOff = Color(QrLibreColorValues.SwitchOff)
+    val LimeText = Color(QrLibreColorValues.LimeText)
 }
 
 internal val GeistMonoFamily = FontFamily(
@@ -50,7 +72,7 @@ private val GeistFamily = FontFamily(
     Font(R.font.geist_bold, FontWeight.Bold),
 )
 
-private val DarkColors = darkColorScheme(
+internal val QrLibreDarkColors = darkColorScheme(
     primary = QrLibreColors.Lime,
     onPrimary = QrLibreColors.OnLime,
     primaryContainer = QrLibreColors.Lime,
@@ -81,9 +103,9 @@ private val DarkColors = darkColorScheme(
     inverseSurface = QrLibreColors.Text,
     inverseOnSurface = QrLibreColors.Page,
     error = QrLibreColors.Danger,
-    onError = QrLibreColors.Text,
+    onError = QrLibreColors.OnLime,
     errorContainer = QrLibreColors.Elevated,
-    onErrorContainer = QrLibreColors.Danger,
+    onErrorContainer = QrLibreColors.DangerText,
     outline = QrLibreColors.SwitchOff,
     outlineVariant = QrLibreColors.Divider,
     scrim = Color.Black,
@@ -219,7 +241,7 @@ internal val MonoBody = TextStyle(
 @Composable
 fun QrLibreTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = DarkColors,
+        colorScheme = QrLibreDarkColors,
         typography = QrLibreTypography,
         shapes = QrLibreShapes,
         content = content,

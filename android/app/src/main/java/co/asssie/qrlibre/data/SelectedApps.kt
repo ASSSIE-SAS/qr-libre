@@ -15,15 +15,24 @@ class SelectedApps(context: Context) {
 
     fun isSelected(packageName: String): Boolean = selected().contains(packageName)
 
-    /** Adds or removes one package and returns the resulting selection. */
+    /**
+     * Adds or removes one package and returns the resulting selection.
+     * Every writer goes through here, so the change signal is emitted in one
+     * place. A request that would not change the set writes nothing and emits
+     * nothing, avoiding duplicate reloads.
+     */
     fun setSelected(packageName: String, selected: Boolean): Set<String> {
-        val updated = selected().toMutableSet()
+        val current = selected()
+        if (current.contains(packageName) == selected) return current
+
+        val updated = current.toMutableSet()
         if (selected) {
             updated.add(packageName)
         } else {
             updated.remove(packageName)
         }
         prefs.edit().putStringSet(KEY_PACKAGES, updated).apply()
+        SelectionEvents.notifyChanged()
         return updated
     }
 

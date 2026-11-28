@@ -4,26 +4,81 @@
     <string name="app_tagline">Captura de avisos. Nada sale del teléfono.</string>
     <string name="listener_label">QR Libre: captura de avisos</string>
 
-    <string name="tab_history">Historial</string>
-    <string name="tab_apps">Apps</string>
-    <string name="tab_privacy">Privacidad</string>
+    <string name="nav_back">Volver</string>
 
     <string name="history_label_today">HOY</string>
     <string name="history_headline">Tus avisos</string>
+    <string name="history_note">Son notificaciones guardadas, no confirmaciones de pago.</string>
     <string name="hero_listening">Escuchando</string>
+    <string name="hero_connecting">Conectando con el sistema…</string>
+    <string name="hero_connecting_body">El permiso está activo, pero el sistema todavía no ha conectado el servicio de avisos. Suele tardar un momento; si no cambia, revisa los ajustes.</string>
     <string name="hero_captured_suffix">avisos capturados hoy</string>
+    <string name="hero_active_summary">Escuchando. %1$s %2$s. %3$s.</string>
     <plurals name="hero_apps_count">
         <item quantity="one">%1$d app</item>
         <item quantity="other">%1$d apps</item>
     </plurals>
     <string name="hero_no_apps">Ninguna app seleccionada</string>
+    <string name="hero_no_apps_action">Elegir apps</string>
     <string name="permission_missing_headline">Falta un permiso</string>
     <string name="permission_grant_action">Dar acceso</string>
     <string name="voice_test">Probar la voz</string>
+    <string name="voice_no_auto">La voz lee una frase de prueba y, en el teléfono que suena, los avisos verificados que llegan.</string>
     <string name="history_empty_title">Todavía no hay avisos</string>
     <string name="history_choose_apps">Elegir apps</string>
 
-    <string name="apps_headline">Qué escuchar</string>
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_open">Ajustes</string>
+    <string name="settings_export">Exportar avisos</string>
+    <string name="settings_export_hint">Se guarda un archivo JSON. Tú eliges dónde.</string>
+    <string name="settings_export_empty">Todavía no hay avisos para exportar.</string>
+    <string name="settings_export_done">Exportado.</string>
+    <string name="settings_export_failed">No se pudo exportar. Intenta de nuevo.</string>
+
+    <string name="pairing_title">Emparejamiento</string>
+    <string name="pairing_intro">Dos teléfonos en el mismo local: uno captura los avisos y el otro suena.</string>
+    <string name="pairing_role_question">¿Qué hace este teléfono?</string>
+    <string name="pairing_role_capture_title">Este teléfono captura</string>
+    <string name="pairing_role_capture_body">Guarda los avisos de las apps que elijas y los manda al teléfono que suena.</string>
+    <string name="pairing_role_speaker_title">Este teléfono suena</string>
+    <string name="pairing_role_speaker_body">Se queda en el local y avisa en voz alta lo que llegue.</string>
+    <string name="pairing_role_change_note">Cambiar de rol desempareja el teléfono.</string>
+
+    <string name="pairing_status_capture_unpaired">Sin emparejar. Muestra este código al teléfono que suena.</string>
+    <string name="pairing_status_capture_paired">Emparejado con %1$s.</string>
+    <string name="pairing_status_speaker_unpaired">Sin emparejar. Escanea el código del teléfono que captura.</string>
+    <string name="pairing_status_speaker_paired">Emparejado con %1$s.</string>
+    <string name="pairing_settings_capture_unpaired">Este teléfono captura. Sin emparejar.</string>
+    <string name="pairing_settings_capture_paired">Captura hacia %1$s.</string>
+    <string name="pairing_settings_speaker_unpaired">Este teléfono suena. Sin emparejar.</string>
+    <string name="pairing_settings_speaker_paired">Suena con %1$s.</string>
+
+    <string name="pairing_bluetooth_permission_title">Permiso de Bluetooth</string>
+    <string name="pairing_bluetooth_permission_body">Para enviar los avisos al teléfono que suena, QR Libre necesita anunciarse y conectarse por Bluetooth. Sin este permiso los avisos se siguen guardando aquí; solo se dejan de enviar.</string>
+    <string name="pairing_bluetooth_permission_action">Permitir Bluetooth</string>
+
+    <string name="pairing_speaker_permission_body">Para buscar y recibir los avisos del teléfono que captura, QR Libre necesita escanear y conectarse por Bluetooth. Mientras no lo permitas, este teléfono no puede sonar.</string>
+
+    <string name="pairing_qr_label">Código QR de emparejamiento</string>
+    <string name="pairing_qr_name">Nombre en el código: %1$s</string>
+    <string name="pairing_qr_hint">El otro teléfono lo escanea una vez. El código solo se muestra en esta pantalla y no se envía a ningún servidor.</string>
+    <string name="pairing_scan">Escanear QR</string>
+    <string name="pairing_scan_hint">Apunta al código del teléfono que captura. Solo necesitas escanearlo una vez.</string>
+    <string name="pairing_scan_invalid">Ese código no es de QR Libre. No se guardó nada.</string>
+    <string name="pairing_speaker_android_11">En Android 11 o menor, esta versión no puede emparejar por QR: el sistema exige un permiso de ubicación que QR Libre no pide. La captura sigue funcionando.</string>
+    <string name="pairing_unpair">Desemparejar</string>
+
+    <string name="pairing_speaker_last_title">Último aviso</string>
+    <string name="pairing_speaker_last_meta">%1$s · %2$s</string>
+    <string name="pairing_speaker_no_message">Todavía no llegó ningún aviso verificado.</string>
+    <string name="pairing_speaker_dropped">Descartados por firma o formato inválido: %1$d</string>
+    <string name="pairing_speaker_open_notice">Este teléfono suena solo mientras QR Libre está abierto. Si sales de la app o la cierras, deja de recibir avisos.</string>
+    <string name="pairing_speaker_link_idle">Sin conexión.</string>
+    <string name="pairing_speaker_link_connecting">Buscando al teléfono que captura…</string>
+    <string name="pairing_speaker_link_connected">Conectado. Escuchando avisos.</string>
+    <string name="pairing_speaker_link_disconnected">Desconectado. Reintentando…</string>
+
+    <string name="apps_headline">Apps que quieres registrar</string>
     <plurals name="apps_selected_summary">
         <item quantity="one">%1$d app seleccionada</item>
         <item quantity="other">%1$d apps seleccionadas</item>
@@ -47,6 +102,17 @@
     <string name="history_clear_body">Se borran todos los avisos guardados en este teléfono. No se puede deshacer.</string>
     <string name="history_clear_confirm">Vaciar</string>
     <string name="history_cancel">Cancelar</string>
+    <string name="history_open_detail">Abrir el aviso completo</string>
+    <string name="capture_detail_back">Volver</string>
+    <string name="capture_detail_copy">Copiar texto</string>
+    <string name="capture_detail_copy_hint">Al copiar, el texto queda en el portapapeles y puedes pegarlo en otra app. En Android moderno, otras apps en segundo plano por lo general no lo leen.</string>
+    <string name="capture_detail_copied">Texto copiado.</string>
+    <string name="capture_verdict_label">Tu clasificación</string>
+    <string name="capture_verdict_payment">Es un pago</string>
+    <string name="capture_verdict_not_payment">No es un pago</string>
+    <string name="capture_verdict_hint">Según tu criterio, no una confirmación del banco. La app no confirma pagos. Toca la opción marcada para quitarla.</string>
+    <string name="verdict_marker_payment">Pago</string>
+    <string name="verdict_marker_not_payment">No es pago</string>
 
     <string name="voice_title">Leer en voz alta</string>
     <string name="voice_explanation">Una frase de prueba para confirmar que la voz funciona.</string>
@@ -63,7 +129,7 @@
     <string name="apps_empty">No se encontraron apps con pantalla de inicio.</string>
     <string name="apps_no_matches">Ninguna app coincide con la búsqueda.</string>
 
-    <string name="privacy_intro">Así funciona QR Libre con tus datos.</string>
+    <string name="privacy_intro">Tus avisos se quedan en este teléfono. Esto es lo que la app hace y lo que no.</string>
     <string name="privacy_reads_title">Qué lee</string>
     <string name="privacy_reads_body">Solo el título y el texto de las notificaciones de las apps que tú elijas. Ignora las demás.</string>
     <string name="privacy_stays_title">Dónde queda</string>

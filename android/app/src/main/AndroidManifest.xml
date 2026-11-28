@@ -1,10 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
       Deliberately no android.permission.INTERNET. The app reads and stores
-      notifications on the device only.
+      notifications on the device only, and the two phones talk over Bluetooth.
     -->
+
+    <!--
+      Both roles speak and listen over Bluetooth. Android 12+ splits Bluetooth
+      into runtime permissions; older releases keep the install-time pair.
+      BLUETOOTH_SCAN is for the speaker looking for the capture service, and
+      neverForLocation keeps it from implying location access. CAMERA is used
+      only by the QR scanner activity the speaker opens. None grants network
+      access.
+    -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <!-- Needed on Android 11+ to list apps that have a launcher screen. -->
     <queries>
