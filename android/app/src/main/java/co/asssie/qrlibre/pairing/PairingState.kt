@@ -47,11 +47,27 @@ fun pairingSummary(role: DeviceRole, peer: PairedPeer?): PairingSummary {
         },
         role = role,
         peerName = peer?.name,
-        showsQr = role == DeviceRole.CAPTURE,
-        showsScanAction = role == DeviceRole.SPEAKER,
+        showsQr = showsPairingQr(role, peer),
+        showsScanAction = canScanForPairing(role, peer),
         scanEnabled = canStartScanning(role),
     )
 }
+
+/**
+ * Only an unpaired capture phone has a code to show. There is room for a single
+ * peer, so once one is stored the QR disappears until the user unpairs; showing
+ * it again would invite a second phone that can never be recorded.
+ */
+fun showsPairingQr(role: DeviceRole, peer: PairedPeer?): Boolean =
+    role == DeviceRole.CAPTURE && peer == null
+
+/**
+ * Only an unpaired speaker has a code to scan. With the single-peer limit, a
+ * paired speaker can no longer store another phone, so the action is hidden
+ * rather than offered and then ignored.
+ */
+fun canScanForPairing(role: DeviceRole, peer: PairedPeer?): Boolean =
+    role == DeviceRole.SPEAKER && peer == null
 
 /**
  * The peer this emitter records when the first speaker connects, or null when
@@ -84,7 +100,26 @@ fun peerOnFirstConnection(
 }
 
 /** Shown when a connection carries no usable device name. */
-private const val FALLBACK_PEER_NAME = "Dispositivo"
+internal const val FALLBACK_PEER_NAME = "Dispositivo"
+
+/**
+ * The peer with a better name, or null when the stored name should stay.
+ *
+ * A connection can arrive before Android has resolved the remote name, which
+ * stores [FALLBACK_PEER_NAME] for a device that has a perfectly good one. This
+ * only upgrades a name that is still exactly the fallback: a real name the user
+ * can already see is never rewritten, so pairings never change under them.
+ *
+ * [remoteName] is trimmed; a blank result or another fallback changes nothing.
+ * Only the name is copied, so the secret and the service UUID stay verbatim.
+ */
+fun refreshedPeerName(existing: PairedPeer?, remoteName: String?): PairedPeer? {
+    if (existing == null) return null
+    if (existing.name != FALLBACK_PEER_NAME) return null
+    val trimmed = remoteName?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    if (trimmed == FALLBACK_PEER_NAME) return null
+    return existing.copy(name = trimmed)
+}
 
 /**
  * The scanner ships with the speaker role and the camera permission. Only the

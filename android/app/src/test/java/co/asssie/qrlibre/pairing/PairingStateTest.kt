@@ -37,7 +37,7 @@ class PairingStateTest {
         assertEquals("Barra", summary.peerName)
         assertTrue(summary.paired)
         assertTrue(summary.canUnpair)
-        assertTrue("the QR stays available to pair another speaker", summary.showsQr)
+        assertFalse("one peer is the limit, so the QR goes away", summary.showsQr)
         assertFalse(summary.showsScanAction)
     }
 
@@ -69,8 +69,68 @@ class PairingStateTest {
         assertTrue(summary.paired)
         assertTrue(summary.canUnpair)
         assertFalse(summary.showsQr)
-        assertTrue(summary.showsScanAction)
+        assertFalse("one peer is the limit, so the scan button goes away", summary.showsScanAction)
         assertTrue(summary.scanEnabled)
+    }
+
+    @Test
+    fun onlyAnUnpairedCapturePhoneShowsThePairingQr() {
+        assertTrue(
+            "the unpaired capture phone is the one that displays the code",
+            showsPairingQr(DeviceRole.CAPTURE, peer = null),
+        )
+        assertFalse(
+            "a paired capture phone hides the code until it is unpaired",
+            showsPairingQr(DeviceRole.CAPTURE, peer),
+        )
+        assertFalse(
+            "the speaker never displays the code",
+            showsPairingQr(DeviceRole.SPEAKER, peer = null),
+        )
+        assertFalse(
+            "the speaker never displays the code, paired or not",
+            showsPairingQr(DeviceRole.SPEAKER, peer),
+        )
+    }
+
+    @Test
+    fun onlyAnUnpairedSpeakerOffersTheScanAction() {
+        assertTrue(
+            "the unpaired speaker is the one that scans",
+            canScanForPairing(DeviceRole.SPEAKER, peer = null),
+        )
+        assertFalse(
+            "a paired speaker hides the scan action until it is unpaired",
+            canScanForPairing(DeviceRole.SPEAKER, peer),
+        )
+        assertFalse(
+            "the capture phone never scans",
+            canScanForPairing(DeviceRole.CAPTURE, peer = null),
+        )
+        assertFalse(
+            "the capture phone never scans, paired or not",
+            canScanForPairing(DeviceRole.CAPTURE, peer),
+        )
+    }
+
+    @Test
+    fun theSummaryFollowsThePairingPredicates() {
+        for (role in DeviceRole.values()) {
+            for (candidate in listOf(null, peer)) {
+                val summary = pairingSummary(role, candidate)
+
+                assertEquals(
+                    "the QR flag must match the predicate for $role/$candidate",
+                    showsPairingQr(role, candidate),
+                    summary.showsQr,
+                )
+                assertEquals(
+                    "the scan flag must match the predicate for $role/$candidate",
+                    canScanForPairing(role, candidate),
+                    summary.showsScanAction,
+                )
+            }
+        }
     }
 
     @Test
@@ -142,6 +202,60 @@ class PairingStateTest {
 
             assertEquals("Dispositivo", recorded?.name)
         }
+    }
+
+    @Test
+    fun noStoredPeerHasNothingToRefresh() {
+        assertNull(
+            "without a peer there is nothing to rename",
+            refreshedPeerName(existing = null, remoteName = "Barra"),
+        )
+    }
+
+    @Test
+    fun aFallbackNameIsReplacedByTheRealRemoteName() {
+        val refreshed = refreshedPeerName(
+            existing = peer.copy(name = FALLBACK_PEER_NAME),
+            remoteName = "  Barra  ",
+        )
+
+        assertEquals("Barra", refreshed?.name)
+        assertEquals(
+            "the refresh must only change the name",
+            peer,
+            refreshed?.copy(name = peer.name),
+        )
+        assertEquals(peer.secretBase64Url, refreshed?.secretBase64Url)
+        assertEquals(peer.serviceUuid, refreshed?.serviceUuid)
+    }
+
+    @Test
+    fun aRealNameIsNeverRenamedByADifferentRealName() {
+        assertNull(
+            "a user-visible pairing must not be renamed after the fact",
+            refreshedPeerName(existing = peer, remoteName = "Otra barra"),
+        )
+    }
+
+    @Test
+    fun aBlankRemoteNameDoesNotRefreshTheFallback() {
+        for (name in listOf(null, "", " ", "\t\n ")) {
+            assertNull(
+                "a blank remote name leaves the fallback in place for $name",
+                refreshedPeerName(existing = peer.copy(name = FALLBACK_PEER_NAME), remoteName = name),
+            )
+        }
+    }
+
+    @Test
+    fun theFallbackNeverReplacesTheFallback() {
+        assertNull(
+            "the generic label is not an improvement over itself",
+            refreshedPeerName(
+                existing = peer.copy(name = FALLBACK_PEER_NAME),
+                remoteName = FALLBACK_PEER_NAME,
+            ),
+        )
     }
 
     @Test
